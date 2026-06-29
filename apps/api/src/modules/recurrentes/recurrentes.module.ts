@@ -3,11 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { RecurrentesController } from './recurrentes.controller';
 import { RecurrentesService } from './recurrentes.service';
 import { Recurrente } from '../../entities/recurrente.entity';
-import { CargoRecurrente } from '../../entities/cargo-recurrente.entity';
-import { Movimiento } from '../../entities/movimiento.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Recurrente, CargoRecurrente, Movimiento])],
+  imports: [TypeOrmModule.forFeature([Recurrente])],
   controllers: [RecurrentesController],
   providers: [RecurrentesService],
   exports: [RecurrentesService],

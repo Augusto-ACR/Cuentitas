@@ -5,7 +5,6 @@ import { Categoria } from './entities/categoria.entity';
 import { Cuenta } from './entities/cuenta.entity';
 import { Movimiento } from './entities/movimiento.entity';
 import { Recurrente } from './entities/recurrente.entity';
-import { CargoRecurrente } from './entities/cargo-recurrente.entity';
 import { Meta } from './entities/meta.entity';
 import { MetaParticipante } from './entities/meta-participante.entity';
 import { AporteMeta } from './entities/aporte-meta.entity';
@@ -16,7 +15,7 @@ export const AppDataSource = new DataSource({
   url: process.env.DATABASE_URL,
   entities: [
     Usuario, Categoria, Cuenta, Movimiento,
-    Recurrente, CargoRecurrente, Meta, MetaParticipante,
+    Recurrente, Meta, MetaParticipante,
     AporteMeta, CotizacionDolar,
   ],
   migrations: ['dist/migrations/*.js'],

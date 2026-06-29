@@ -1,8 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Usuario } from './usuario.entity';
 import { Categoria } from './categoria.entity';
 import { Cuenta } from './cuenta.entity';
-import { CargoRecurrente } from './cargo-recurrente.entity';
 
 @Entity('recurrentes')
 export class Recurrente {
@@ -38,7 +37,4 @@ export class Recurrente {
   @ManyToOne(() => Cuenta)
   @JoinColumn({ name: 'cuenta_id' })
   cuenta: Cuenta;
-
-  @OneToMany(() => CargoRecurrente, c => c.recurrente, { cascade: true })
-  historial: CargoRecurrente[];
 }

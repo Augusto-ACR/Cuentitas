@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
 import { RecurrentesService } from './recurrentes.service';
 import { UsuarioId } from '../../common/decorators';
 
@@ -7,8 +7,8 @@ export class RecurrentesController {
   constructor(private readonly svc: RecurrentesService) {}
 
   @Get()
-  listar(@UsuarioId() uid: number, @Query('mes') mes?: string) {
-    return this.svc.listar(uid, mes);
+  listar(@UsuarioId() uid: number) {
+    return this.svc.listar(uid);
   }
 
   @Post()
@@ -26,26 +26,12 @@ export class RecurrentesController {
     return this.svc.eliminar(uid, id);
   }
 
-  @Post(':id/confirmar')
-  confirmar(
+  @Post(':id/cargar')
+  cargar(
     @UsuarioId() uid: number,
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { mes: string; monto: number },
+    @Body() body: { monto?: number; fecha?: string },
   ) {
-    return this.svc.confirmar(uid, id, body.mes, body.monto);
-  }
-
-  @Post(':id/desconfirmar')
-  desconfirmar(
-    @UsuarioId() uid: number,
-    @Param('id', ParseIntPipe) id: number,
-    @Body() body: { mes: string },
-  ) {
-    return this.svc.desconfirmar(uid, id, body.mes);
-  }
-
-  @Post('generar')
-  generar(@Query('mes') mes: string) {
-    return this.svc.generarManual(mes);
+    return this.svc.cargar(uid, id, body?.monto, body?.fecha);
   }
 }

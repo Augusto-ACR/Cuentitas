@@ -3,115 +3,79 @@
     <header class="page-header">
       <div>
         <div class="page-sub">Cuentitas</div>
-        <h1 class="page-title">Recurrentes</h1>
+        <h1 class="page-title">Gastos fijos</h1>
       </div>
+      <button class="btn-nuevo" @click="abrirNuevo">+ Nuevo</button>
     </header>
 
-    <!-- Resumen del mes -->
-    <div class="resumen-card">
-      <div class="res-top">
-        <span class="res-icon">↻</span>
-        <span class="res-label">Total del mes · {{ mesLabel(mesActual()) }}</span>
-      </div>
-      <div class="res-total">{{ ars(totalMes) }}</div>
-      <div class="res-tags">
-        <span class="tag purple">{{ pctGastos }}% de tus gastos</span>
-        <span class="res-usd">{{ usd(totalMes / dolar.valorPreferido) }}</span>
-      </div>
-      <div class="res-row">
-        <div class="res-item">
-          <div class="res-item-label green">● Confirmado</div>
-          <div class="res-item-val">{{ ars(totalConfirmado) }}</div>
-        </div>
-        <div class="res-item">
-          <div class="res-item-label warn">● Estimado</div>
-          <div class="res-item-val muted">{{ ars(totalEstimado) }}</div>
-        </div>
-      </div>
+    <p class="intro">Plantillas de gastos que se repiten. Tocá <strong>Cargar</strong> y se anota como un movimiento del mes (descontando de la cuenta).</p>
+
+    <div v-if="!store.items.length" class="empty">
+      <p>No tenés gastos fijos todavía.</p>
+      <button class="btn-nuevo" @click="abrirNuevo">Crear el primero</button>
     </div>
 
-    <!-- Alerta por confirmar -->
-    <div class="alerta" v-if="porConfirmarN > 0">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="1.8" stroke-linecap="round"><path d="M12 8v5"/><circle cx="12" cy="16.5" r=".4"/><circle cx="12" cy="12" r="9"/></svg>
-      <span><strong>{{ porConfirmarN }} por confirmar.</strong> Los precios cambian todos los meses — revisá que el monto sea el real.</span>
-    </div>
-
-    <!-- Lista -->
-    <div class="section-title">Lo que se repite todos los meses</div>
     <div class="rec-list">
       <div v-for="r in store.items" :key="r.id" class="rec-card" :style="{ borderLeftColor: r.categoria?.color ?? '#94A3B8' }">
         <div class="rec-top">
           <span class="rec-avatar" :style="{ background: r.categoria?.color ?? '#94A3B8' }">{{ r.nombre[0] }}</span>
           <div class="rec-info">
             <div class="rec-nombre">{{ r.nombre }}</div>
-            <div class="rec-meta">{{ r.categoria?.label }} · día {{ r.diaAprox }}</div>
+            <div class="rec-meta">{{ r.categoria?.label ?? 'Sin categoría' }} · {{ r.cuenta?.nombre }} · día {{ r.diaAprox }}</div>
           </div>
-          <div class="rec-right">
-            <div class="rec-monto">{{ ars(r.cargoMes?.monto ?? r.montoEstimado) }}</div>
-            <div class="rec-delta" v-if="r.cargoMes?.estado === 'confirmado'" style="color:#16A34A">Confirmado</div>
-          </div>
+          <div class="rec-monto">{{ ars(r.montoEstimado) }}</div>
         </div>
         <div class="rec-footer">
-          <span class="estado-pill" :class="r.cargoMes?.estado === 'confirmado' ? 'confirmado' : 'pendiente'">
-            <span class="dot"></span>{{ r.cargoMes?.estado === 'confirmado' ? 'Confirmado' : 'Por confirmar' }}
-          </span>
           <div class="rec-acciones">
             <button class="btn-link" @click="abrirEditar(r)">Editar</button>
-            <button v-if="r.cargoMes?.estado === 'confirmado'" class="btn-link warn" @click="desconfirmar(r)">Deshacer</button>
-            <button v-else class="btn-confirmar" @click="abrirConfirmar(r)">Confirmar precio</button>
+            <button class="btn-link danger" @click="eliminarRec(r)">Eliminar</button>
           </div>
+          <button class="btn-cargar" @click="abrirCargar(r)">Cargar este mes</button>
         </div>
       </div>
     </div>
 
-    <!-- Modal confirmar precio -->
+    <!-- Modal crear/editar -->
     <div v-if="modal" class="modal-overlay" @click.self="modal = false">
       <div class="modal">
         <div class="modal-header">
-          <h2>Confirmar precio · {{ confirmandoRec?.nombre }}</h2>
+          <h2>{{ editando ? 'Editar gasto fijo' : 'Nuevo gasto fijo' }}</h2>
           <button @click="modal = false" class="btn-cerrar">✕</button>
         </div>
-        <form @submit.prevent="confirmar" style="display:flex;flex-direction:column;gap:14px">
-          <div class="field">
-            <label>Monto real de este mes</label>
-            <input v-model="montoConfirmar" type="number" min="0" step="0.01" required />
-          </div>
-          <p v-if="deltaResult !== null" class="delta-info">
-            Δ vs mes anterior: <strong>{{ deltaResult > 0 ? '+' : '' }}{{ deltaResult }}%</strong>
-          </p>
-          <button type="submit" class="btn-guardar">Confirmar</button>
-        </form>
-      </div>
-    </div>
-
-    <!-- Modal editar recurrente -->
-    <div v-if="modalEditar" class="modal-overlay" @click.self="modalEditar = false">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>Editar recurrente</h2>
-          <button @click="modalEditar = false" class="btn-cerrar">✕</button>
-        </div>
-        <form @submit.prevent="guardarEdicion" style="display:flex;flex-direction:column;gap:14px">
-          <div class="field"><label>Nombre</label><input v-model="formEditar.nombre" required /></div>
+        <form @submit.prevent="guardar" style="display:flex;flex-direction:column;gap:14px">
+          <div class="field"><label>Nombre</label><input v-model="form.nombre" required placeholder="Ej: Alquiler, Netflix" /></div>
           <div class="field">
             <label>Categoría</label>
-            <select v-model="formEditar.categoriaId">
+            <select v-model="form.categoriaId">
               <option value="">Sin categoría</option>
               <option v-for="c in categorias" :key="c.id" :value="c.id">{{ c.label }}</option>
             </select>
           </div>
           <div class="field">
             <label>Cuenta</label>
-            <select v-model="formEditar.cuentaId" required>
+            <select v-model="form.cuentaId" required>
               <option v-for="c in cuentasStore.cuentas" :key="c.id" :value="c.id">{{ c.nombre }}</option>
             </select>
           </div>
-          <div class="field"><label>Día aproximado</label><input v-model="formEditar.diaAprox" type="number" min="1" max="31" required /></div>
-          <div class="field"><label>Monto estimado</label><input v-model="formEditar.montoEstimado" type="number" min="0" step="0.01" required /></div>
-          <div class="modal-actions">
-            <button type="button" class="btn-eliminar" @click="eliminarRec">Eliminar</button>
-            <button type="submit" class="btn-guardar">Guardar</button>
-          </div>
+          <div class="field"><label>Día aproximado del mes</label><input v-model="form.diaAprox" type="number" min="1" max="31" required /></div>
+          <div class="field"><label>Monto habitual</label><input v-model="form.montoEstimado" type="number" min="0" step="0.01" required /></div>
+          <button type="submit" class="btn-guardar">{{ editando ? 'Guardar' : 'Crear' }}</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal cargar este mes -->
+    <div v-if="modalCargar" class="modal-overlay" @click.self="modalCargar = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Cargar {{ cargandoRec?.nombre }}</h2>
+          <button @click="modalCargar = false" class="btn-cerrar">✕</button>
+        </div>
+        <form @submit.prevent="confirmarCargar" style="display:flex;flex-direction:column;gap:14px">
+          <p class="intro" style="margin:0">Revisá el monto real de este mes (los precios cambian). Se va a anotar como un gasto en {{ cargandoRec?.cuenta?.nombre }}.</p>
+          <div class="field"><label>Monto de este mes</label><input v-model="formCargar.monto" type="number" min="0" step="0.01" required /></div>
+          <div class="field"><label>Fecha</label><input v-model="formCargar.fecha" type="date" required /></div>
+          <button type="submit" class="btn-cargar full">Cargar como gasto</button>
         </form>
       </div>
     </div>
@@ -119,122 +83,97 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRecurrentesStore } from '@/stores/recurrentes';
-import { useDolarStore } from '@/stores/dolar';
-import { useMovimientosStore } from '@/stores/movimientos';
 import { useCuentasStore } from '@/stores/cuentas';
+import { useMovimientosStore } from '@/stores/movimientos';
 import { http } from '@/lib/http';
-import { ars, usd, mesLabel, mesActual } from '@/lib/format';
+import { ars } from '@/lib/format';
 
 const store = useRecurrentesStore();
-const dolar = useDolarStore();
-const movStore = useMovimientosStore();
 const cuentasStore = useCuentasStore();
-const mes = mesActual();
+const movStore = useMovimientosStore();
 const categorias = ref<any[]>([]);
 
 const modal = ref(false);
-const confirmandoRec = ref<any>(null);
-const montoConfirmar = ref('');
-const deltaResult = ref<number | null>(null);
+const editando = ref<any>(null);
+const form = ref({ nombre: '', categoriaId: '' as any, cuentaId: '' as any, diaAprox: '1', montoEstimado: '' });
 
-const modalEditar = ref(false);
-const editandoRec = ref<any>(null);
-const formEditar = ref({ nombre: '', categoriaId: '' as any, cuentaId: '' as any, diaAprox: '', montoEstimado: '' });
+const modalCargar = ref(false);
+const cargandoRec = ref<any>(null);
+const formCargar = ref({ monto: '', fecha: '' });
 
-const totalMes = computed(() => store.items.reduce((a, r) => a + parseFloat(r.cargoMes?.monto ?? r.montoEstimado), 0));
-const totalConfirmado = computed(() => store.items.filter(r => r.cargoMes?.estado === 'confirmado').reduce((a, r) => a + parseFloat(r.cargoMes?.monto ?? 0), 0));
-const totalEstimado = computed(() => store.items.filter(r => r.cargoMes?.estado !== 'confirmado').reduce((a, r) => a + parseFloat(r.montoEstimado), 0));
-const porConfirmarN = computed(() => store.items.filter(r => r.cargoMes?.estado !== 'confirmado').length);
-const pctGastos = computed(() => {
-  const gastos = movStore.resumen?.gastos ?? 0;
-  return gastos ? ((totalMes.value / gastos) * 100).toFixed(0) : '0';
-});
+function fechaSugerida(dia: number): string {
+  const hoy = new Date();
+  const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  const d = Math.min(dia || 1, ultimoDia);
+  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
 
-function abrirConfirmar(r: any) {
-  confirmandoRec.value = r;
-  montoConfirmar.value = String(parseFloat(r.montoEstimado));
-  deltaResult.value = null;
+function abrirNuevo() {
+  editando.value = null;
+  form.value = { nombre: '', categoriaId: '', cuentaId: String(cuentasStore.cuentas[0]?.id ?? ''), diaAprox: '1', montoEstimado: '' };
   modal.value = true;
 }
 
-async function confirmar() {
-  const res = await store.confirmar(confirmandoRec.value.id, mes, parseFloat(montoConfirmar.value));
-  deltaResult.value = res.delta;
-  if (res.delta === null) modal.value = false;
-  await Promise.all([movStore.cargarResumen(), cuentasStore.cargar()]);
-}
-
-async function desconfirmar(r: any) {
-  if (!confirm(`¿Deshacer la confirmación de "${r.nombre}"? Se borra el gasto y se devuelve el saldo a la cuenta.`)) return;
-  await store.desconfirmar(r.id, mes);
-  await Promise.all([movStore.cargarResumen(), cuentasStore.cargar()]);
-}
-
 function abrirEditar(r: any) {
-  editandoRec.value = r;
-  formEditar.value = {
+  editando.value = r;
+  form.value = {
     nombre: r.nombre,
     categoriaId: r.categoriaId ?? '',
     cuentaId: r.cuentaId,
     diaAprox: String(r.diaAprox),
     montoEstimado: String(parseFloat(r.montoEstimado)),
   };
-  modalEditar.value = true;
+  modal.value = true;
 }
 
-async function guardarEdicion() {
-  await store.actualizar(editandoRec.value.id, {
-    nombre: formEditar.value.nombre,
-    categoriaId: formEditar.value.categoriaId ? +formEditar.value.categoriaId : null,
-    cuentaId: +formEditar.value.cuentaId,
-    diaAprox: +formEditar.value.diaAprox,
-    montoEstimado: String(formEditar.value.montoEstimado),
-  }, mes);
-  modalEditar.value = false;
+async function guardar() {
+  const data = {
+    nombre: form.value.nombre,
+    categoriaId: form.value.categoriaId ? +form.value.categoriaId : null,
+    cuentaId: +form.value.cuentaId,
+    diaAprox: +form.value.diaAprox,
+    montoEstimado: String(form.value.montoEstimado),
+  };
+  if (editando.value) await store.actualizar(editando.value.id, data);
+  else await store.crear(data);
+  modal.value = false;
 }
 
-async function eliminarRec() {
-  if (!confirm(`¿Eliminar el recurrente "${editandoRec.value.nombre}"?`)) return;
-  await store.eliminar(editandoRec.value.id, mes);
-  modalEditar.value = false;
+async function eliminarRec(r: any) {
+  if (!confirm(`¿Eliminar el gasto fijo "${r.nombre}"? (no borra los movimientos ya cargados)`)) return;
+  await store.eliminar(r.id);
 }
 
-onMounted(async () => {
-  dolar.cargar();
+function abrirCargar(r: any) {
+  cargandoRec.value = r;
+  formCargar.value = { monto: String(parseFloat(r.montoEstimado)), fecha: fechaSugerida(r.diaAprox) };
+  modalCargar.value = true;
+}
+
+async function confirmarCargar() {
+  await store.cargarMes(cargandoRec.value.id, parseFloat(formCargar.value.monto), formCargar.value.fecha);
+  modalCargar.value = false;
+  await Promise.all([cuentasStore.cargar(), movStore.cargarResumen()]);
+}
+
+onMounted(() => {
+  store.cargar();
   cuentasStore.cargar();
   http.get<any[]>('/categorias').then(r => (categorias.value = r));
-  await store.cargar(mes);
-  await movStore.cargarResumen();
 });
 </script>
 
 <style scoped>
 .page { padding: 20px 16px 24px; max-width: 680px; margin: 0 auto; }
-.page-header { margin-bottom: 18px; }
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
 .page-sub { font-size: 11px; color: #94A3B8; }
 .page-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 22px; color: #0F172A; }
+.btn-nuevo { background: #4F46E5; color: #fff; border: none; border-radius: 12px; padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.intro { font-size: 12.5px; color: #94A3B8; line-height: 1.5; margin-bottom: 16px; }
+.empty { text-align: center; color: #94A3B8; padding: 40px 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 
-.resumen-card { background: #fff; border: 1px solid #E6E9EF; border-radius: 18px; padding: 18px; margin-bottom: 14px; }
-.res-top { display: flex; align-items: center; gap: 8px; color: #A855F7; margin-bottom: 8px; font-size: 12px; font-weight: 600; }
-.res-icon { font-size: 16px; }
-.res-total { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 28px; color: #0F172A; letter-spacing: -0.02em; }
-.res-tags { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
-.tag { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
-.tag.purple { color: #A855F7; background: #F3E8FF; }
-.res-usd { font-size: 11px; color: #94A3B8; font-family: 'JetBrains Mono', monospace; }
-.res-row { display: flex; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #EEF1F5; }
-.res-item { flex: 1; }
-.res-item-label { font-size: 10.5px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
-.res-item-label.green { color: #16A34A; }
-.res-item-label.warn { color: #B45309; }
-.res-item-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: #0F172A; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.res-item-val.muted { color: #475569; }
-
-.alerta { display: flex; align-items: flex-start; gap: 9px; background: #FEF3C7; border: 1px solid #FCE9A8; border-radius: 13px; padding: 11px 14px; margin-bottom: 16px; font-size: 12px; color: #92400E; line-height: 1.4; }
-
-.section-title { font-size: 13px; font-weight: 600; color: #0F172A; margin-bottom: 12px; }
 .rec-list { display: flex; flex-direction: column; gap: 11px; }
 .rec-card { background: #fff; border: 1px solid #E6E9EF; border-left: 3px solid #94A3B8; border-radius: 15px; padding: 13px; }
 .rec-top { display: flex; align-items: center; gap: 12px; }
@@ -242,30 +181,21 @@ onMounted(async () => {
 .rec-info { flex: 1; min-width: 0; }
 .rec-nombre { font-size: 13.5px; font-weight: 600; color: #0F172A; }
 .rec-meta { font-size: 11px; color: #94A3B8; margin-top: 2px; }
-.rec-right { text-align: right; }
-.rec-monto { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: #0F172A; }
-.rec-delta { font-size: 10px; font-weight: 600; color: #16A34A; margin-top: 2px; }
+.rec-monto { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: #0F172A; flex: none; }
 .rec-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 11px; padding-top: 10px; border-top: 1px solid #F1F5F9; }
-.estado-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 999px; }
-.estado-pill.confirmado { color: #16A34A; background: #E7F6EC; }
-.estado-pill.pendiente { color: #B45309; background: #FEF3C7; }
-.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.btn-confirmar { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: #4F46E5; font-weight: 600; background: none; border: none; cursor: pointer; }
+.rec-acciones { display: flex; align-items: center; gap: 14px; }
+.btn-link { font-size: 11.5px; font-weight: 600; color: #475569; background: none; border: none; cursor: pointer; padding: 0; }
+.btn-link.danger { color: #E11D48; }
+.btn-cargar { background: #0D9488; color: #fff; border: none; border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.btn-cargar.full { width: 100%; padding: 12px; font-size: 14px; border-radius: 12px; }
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.4); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
 .modal { background: #fff; border-radius: 20px 20px 0 0; padding: 24px 20px 32px; width: 100%; max-width: 480px; }
 .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-.modal-header h2 { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 16px; color: #0F172A; }
+.modal-header h2 { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 17px; color: #0F172A; }
 .btn-cerrar { background: none; border: none; color: #94A3B8; font-size: 18px; cursor: pointer; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: 12.5px; font-weight: 500; color: #475569; }
-.field input { padding: 10px 12px; border: 1px solid #E6E9EF; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; }
-.delta-info { font-size: 13px; color: #475569; background: #F6F7F9; padding: 10px 12px; border-radius: 10px; }
+.field input, .field select { padding: 10px 12px; border: 1px solid #E6E9EF; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; }
 .btn-guardar { padding: 12px; background: #4F46E5; color: #fff; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; }
-.rec-acciones { display: flex; align-items: center; gap: 14px; }
-.btn-link { font-size: 11.5px; font-weight: 600; color: #475569; background: none; border: none; cursor: pointer; padding: 0; }
-.btn-link.warn { color: #B45309; }
-.modal-actions { display: flex; gap: 10px; margin-top: 4px; }
-.modal-actions .btn-guardar { flex: 1; }
-.btn-eliminar { padding: 12px 16px; background: #FCE8EC; color: #E11D48; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; }
 </style>

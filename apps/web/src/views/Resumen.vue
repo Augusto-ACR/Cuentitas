@@ -172,7 +172,7 @@ onMounted(async () => {
   await Promise.all([
     dolar.cargar(),
     cuentas.cargar(),
-    recurrentes.cargar(mes),
+    recurrentes.cargar(),
     metas.cargar(),
   ]);
   [resumen.value, tendencia.value, categorias.value] = await Promise.all([

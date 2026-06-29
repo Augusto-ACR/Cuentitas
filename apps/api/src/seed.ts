@@ -15,7 +15,6 @@ import { Usuario } from './entities/usuario.entity';
 import { Categoria } from './entities/categoria.entity';
 import { Cuenta } from './entities/cuenta.entity';
 import { Recurrente } from './entities/recurrente.entity';
-import { CargoRecurrente } from './entities/cargo-recurrente.entity';
 import { Movimiento } from './entities/movimiento.entity';
 import { Meta } from './entities/meta.entity';
 import { MetaParticipante } from './entities/meta-participante.entity';
@@ -25,7 +24,7 @@ import { CotizacionDolar } from './entities/cotizacion-dolar.entity';
 const ds = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
-  entities: [Usuario, Categoria, Cuenta, Recurrente, CargoRecurrente, Movimiento, Meta, MetaParticipante, AporteMeta, CotizacionDolar],
+  entities: [Usuario, Categoria, Cuenta, Recurrente, Movimiento, Meta, MetaParticipante, AporteMeta, CotizacionDolar],
   synchronize: false,
 });
 
@@ -121,7 +120,6 @@ async function run() {
   const catRepo = ds.getRepository(Categoria);
   const cuentaRepo = ds.getRepository(Cuenta);
   const recRepo = ds.getRepository(Recurrente);
-  const cargoRepo = ds.getRepository(CargoRecurrente);
   const movRepo = ds.getRepository(Movimiento);
   const metaRepo = ds.getRepository(Meta);
   const partRepo = ds.getRepository(MetaParticipante);
@@ -165,11 +163,11 @@ async function run() {
   const cats = await catRepo.find();
   const catMap: Record<string, number> = Object.fromEntries(cats.map(c => [c.slug, c.id]));
 
-  // 5. Recurrentes + historial
+  // 5. Recurrentes (plantillas de gastos que se repiten)
   for (const r of RECURRENTES) {
-    let rec = await recRepo.findOne({ where: { usuarioId: uid, nombre: r.nombre } });
-    if (!rec) {
-      rec = await recRepo.save(recRepo.create({
+    const existe = await recRepo.findOne({ where: { usuarioId: uid, nombre: r.nombre } });
+    if (!existe) {
+      await recRepo.save(recRepo.create({
         usuarioId: uid,
         nombre: r.nombre,
         categoriaId: catMap[r.catSlug] ?? null,
@@ -177,17 +175,6 @@ async function run() {
         diaAprox: r.diaAprox,
         montoEstimado: r.montoEstimado,
       }));
-    }
-    for (const h of r.historial) {
-      const existe = await cargoRepo.findOne({ where: { recurrenteId: rec.id, mes: h.mes } });
-      if (!existe) {
-        await cargoRepo.save(cargoRepo.create({
-          recurrenteId: rec.id,
-          mes: h.mes,
-          monto: h.monto,
-          estado: h.estado as any,
-        }));
-      }
     }
   }
   console.log('Recurrentes OK');

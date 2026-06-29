@@ -73,7 +73,7 @@ const navItems = computed(() => {
     { to: '/cuentas',      label: 'Cuentas',      icon: iconCard },
     { to: '/metas',        label: 'Metas',        icon: iconTarget },
     { to: '/analisis',     label: 'Análisis',     icon: iconChart },
-    { to: '/recurrentes',  label: 'Recurrentes',  icon: iconRepeat },
+    { to: '/recurrentes',  label: 'Gastos fijos',  icon: iconRepeat },
     { to: '/importar',     label: 'Importar',     icon: iconImport },
     { to: '/ajustes',      label: 'Ajustes',      icon: iconSettings },
   ];
