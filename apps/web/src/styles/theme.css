@@ -1,0 +1,64 @@
+/* Paleta semántica. Cada color tiene su versión clara y oscura (gris cálido tipo Claude).
+   Los componentes usan estas variables (no hex), así el tema cambia toda la app de una. */
+:root {
+  --bg: #F6F7F9;
+  --surface: #FFFFFF;
+  --surface-2: #F1F5F9;
+  --surface-3: #EEF1F5;
+  --border: #E6E9EF;
+  --text: #0F172A;
+  --text-soft: #475569;
+  --text-muted: #94A3B8;
+  --primary: #4F46E5;
+  --primary-soft: #EEF0FE;
+  --income: #16A34A;
+  --income-soft: #E7F6EC;
+  --expense: #E11D48;
+  --expense-soft: #FCE8EC;
+  --savings: #0D9488;
+  --savings-soft: #E3F4F1;
+  --dollar: #2563EB;
+  --dollar-soft: #E8EFFD;
+  --warning: #B45309;
+  --warning-soft: #FEF3C7;
+  /* Tarjeta "hero" (patrimonio / balance) — ya no es negra */
+  --hero-bg: #EEF0FE;
+  --hero-text: #1E1B4B;
+  --hero-muted: #6366F1;
+  --overlay: rgba(15, 23, 42, 0.4);
+}
+
+[data-theme="dark"] {
+  --bg: #262624;
+  --surface: #30302E;
+  --surface-2: #3A3A37;
+  --surface-3: #3A3A37;
+  --border: rgba(255, 255, 255, 0.09);
+  --text: #F5F4EE;
+  --text-soft: #C4C0B8;
+  --text-muted: #A8A29E;
+  --primary: #8B83F0;
+  --primary-soft: #3D3A52;
+  --income: #4ADE80;
+  --income-soft: #1E3A2A;
+  --expense: #FB7185;
+  --expense-soft: #3F2230;
+  --savings: #2DD4BF;
+  --savings-soft: #1F3A37;
+  --dollar: #93B4F5;
+  --dollar-soft: #2A3450;
+  --warning: #FBBF24;
+  --warning-soft: #3A3320;
+  --hero-bg: #34322E;
+  --hero-text: #F5F4EE;
+  --hero-muted: #A29BF5;
+  --overlay: rgba(0, 0, 0, 0.6);
+}
+
+html, body, #app {
+  background: var(--bg);
+  color: var(--text);
+}
+body {
+  transition: background 0.2s ease, color 0.2s ease;
+}

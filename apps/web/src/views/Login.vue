@@ -56,13 +56,13 @@ async function onSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #F6F7F9;
+  background: var(--bg);
   padding: 24px;
 }
 
 .login-card {
-  background: #fff;
-  border: 1px solid #E6E9EF;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 40px 36px;
   width: 100%;
@@ -81,8 +81,8 @@ async function onSubmit() {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: #4F46E5;
-  color: #fff;
+  background: var(--primary);
+  color: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -95,44 +95,44 @@ async function onSubmit() {
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 600;
   font-size: 22px;
-  color: #0F172A;
+  color: var(--text);
 }
 
 .login-sub {
   font-size: 13px;
-  color: #94A3B8;
+  color: var(--text-muted);
   margin-bottom: 28px;
 }
 
 .login-form { display: flex; flex-direction: column; gap: 16px; }
 
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field label { font-size: 13px; font-weight: 500; color: #475569; }
+.field label { font-size: 13px; font-weight: 500; color: var(--text-soft); }
 .field input {
   padding: 11px 14px;
-  border: 1px solid #E6E9EF;
+  border: 1px solid var(--border);
   border-radius: 12px;
   font-size: 14px;
   font-family: 'Inter', sans-serif;
-  color: #0F172A;
-  background: #fff;
+  color: var(--text);
+  background: var(--surface);
   outline: none;
   transition: border-color 0.15s;
 }
-.field input:focus { border-color: #4F46E5; }
+.field input:focus { border-color: var(--primary); }
 
 .error-msg {
   font-size: 12.5px;
-  color: #E11D48;
-  background: #FCE8EC;
+  color: var(--expense);
+  background: var(--expense-soft);
   padding: 8px 12px;
   border-radius: 8px;
 }
 
 .btn-submit {
   padding: 12px;
-  background: #4F46E5;
-  color: #fff;
+  background: var(--primary);
+  color: var(--surface);
   border: none;
   border-radius: 12px;
   font-family: 'Inter', sans-serif;

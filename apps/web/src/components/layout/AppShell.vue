@@ -93,7 +93,7 @@ const bottomNavItems = [
 .shell {
   display: flex;
   min-height: 100vh;
-  background: #F6F7F9;
+  background: var(--bg);
 }
 
 /* Sidebar desktop */
@@ -101,8 +101,8 @@ const bottomNavItems = [
   display: none;
   width: 240px;
   flex: none;
-  background: #fff;
-  border-right: 1px solid #EEF1F5;
+  background: var(--surface);
+  border-right: 1px solid var(--surface-3);
   padding: 24px 16px;
   flex-direction: column;
   position: sticky;
@@ -121,8 +121,8 @@ const bottomNavItems = [
   width: 30px;
   height: 30px;
   border-radius: 9px;
-  background: #4F46E5;
-  color: #fff;
+  background: var(--primary);
+  color: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -135,7 +135,7 @@ const bottomNavItems = [
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 600;
   font-size: 17px;
-  color: #0F172A;
+  color: var(--text);
 }
 
 .sidebar-nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
@@ -146,26 +146,26 @@ const bottomNavItems = [
   gap: 11px;
   padding: 10px 12px;
   border-radius: 11px;
-  color: #475569;
+  color: var(--text-soft);
   font-size: 13.5px;
   font-weight: 500;
   text-decoration: none;
   transition: background 0.15s;
 }
-.nav-item:hover { background: #F6F7F9; }
-.nav-item--active { background: #EEF0FE; color: #4F46E5; font-weight: 600; }
+.nav-item:hover { background: var(--bg); }
+.nav-item--active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
 
 .sidebar-dollar {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #E8EFFD;
-  color: #2563EB;
+  background: var(--dollar-soft);
+  color: var(--dollar);
   padding: 11px 13px;
   border-radius: 13px;
   margin-top: auto;
 }
-.dollar-dot { width: 8px; height: 8px; border-radius: 50%; background: #2563EB; flex: none; }
+.dollar-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dollar); flex: none; }
 .dollar-label { font-size: 10px; color: #60A5FA; font-weight: 500; }
 .dollar-val { font-size: 14px; font-weight: 600; font-family: 'Space Grotesk', sans-serif; }
 
@@ -182,8 +182,8 @@ const bottomNavItems = [
   bottom: 0;
   left: 0;
   right: 0;
-  background: #fff;
-  border-top: 1px solid #EEF1F5;
+  background: var(--surface);
+  border-top: 1px solid var(--surface-3);
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -196,19 +196,19 @@ const bottomNavItems = [
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  color: #94A3B8;
+  color: var(--text-muted);
   text-decoration: none;
   font-size: 9.5px;
   font-weight: 500;
 }
-.bn-item--active { color: #4F46E5; font-weight: 600; }
+.bn-item--active { color: var(--primary); font-weight: 600; }
 
 .bn-fab {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: #4F46E5;
-  color: #fff;
+  background: var(--primary);
+  color: var(--surface);
   border: none;
   display: flex;
   align-items: center;
