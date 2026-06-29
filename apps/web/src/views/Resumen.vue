@@ -6,11 +6,11 @@
         <h1 class="page-title">Resumen</h1>
       </div>
       <div class="header-right">
-        <div class="dollar-badge" v-if="dolar.cotizacionPreferida">
+        <div class="dollar-badge" v-if="dolar.cotizacionPreferida" @click="$router.push('/ajustes')" role="button" tabindex="0">
           <span class="dot"></span>
           Dólar {{ prefLabel }} {{ ars(dolar.valorPreferido) }}
         </div>
-        <div class="avatar">{{ auth.usuario?.nombre?.[0] }}</div>
+        <div class="avatar" @click="irPerfil" role="button" tabindex="0">{{ auth.usuario?.nombre?.[0] }}</div>
       </div>
     </header>
 
@@ -136,7 +136,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useDolarStore } from '@/stores/dolar';
 import { useCuentasStore } from '@/stores/cuentas';
@@ -150,6 +150,12 @@ const dolar = useDolarStore();
 const cuentas = useCuentasStore();
 const recurrentes = useRecurrentesStore();
 const metas = useMetasStore();
+const router = useRouter();
+
+// El avatar lleva a Usuarios si sos admin, o a Ajustes (tu perfil) si sos miembro.
+function irPerfil() {
+  router.push(auth.usuario?.rol === 'admin' ? '/admin' : '/ajustes');
+}
 
 const resumen = ref<any>(null);
 const tendencia = ref<any>(null);
@@ -210,9 +216,9 @@ const donutSegs = computed(() => {
 .page-sub { font-size: 11px; color: #94A3B8; font-weight: 500; }
 .page-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 22px; color: #0F172A; margin-top: 2px; }
 .header-right { display: flex; align-items: center; gap: 10px; }
-.dollar-badge { display: flex; align-items: center; gap: 7px; background: #E8EFFD; color: #2563EB; padding: 7px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+.dollar-badge { display: flex; align-items: center; gap: 7px; background: #E8EFFD; color: #2563EB; padding: 7px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: #2563EB; }
-.avatar { width: 36px; height: 36px; border-radius: 50%; background: #EEF0FE; color: #4F46E5; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; font-family: 'Space Grotesk', sans-serif; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: #EEF0FE; color: #4F46E5; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; font-family: 'Space Grotesk', sans-serif; cursor: pointer; }
 
 .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-bottom: 14px; }
 .kpi-card { background: #fff; border: 1px solid #E6E9EF; border-radius: 16px; padding: 13px; }

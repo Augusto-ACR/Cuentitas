@@ -102,7 +102,7 @@ const catsPersonales = computed(() => cats.value.filter(c => !c.sistema));
 
 async function cambiarPref(val: 'oficial' | 'mep' | 'blue') {
   pref.value = val;
-  await http.patch('/usuarios/me', { dolarPref: val });
+  await http.patch('/usuarios/preferencias', { dolarPref: val });
   if (auth.usuario) auth.usuario.dolarPref = val;
   prefOk.value = true;
   setTimeout(() => { prefOk.value = false; }, 2000);

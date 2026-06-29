@@ -162,7 +162,7 @@ onMounted(async () => {
   [tendencia.value, categorias.value, topDescr.value, resumenMes.value] = await Promise.all([
     http.get<any>('/analisis/tendencia'),
     http.get<any[]>(`/analisis/categorias?mes=${mes}`),
-    http.get<any[]>(`/analisis/top-descripcion?mes=${mes}`),
+    http.get<any[]>(`/analisis/top-descripciones?mes=${mes}`),
     http.get<any>(`/movimientos/resumen?mes=${mes}`),
   ]);
 });

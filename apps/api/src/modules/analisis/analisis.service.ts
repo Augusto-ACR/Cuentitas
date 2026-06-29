@@ -54,6 +54,7 @@ export class AnalisisService {
       .createQueryBuilder('m')
       .select('m.descripcion', 'descripcion')
       .addSelect('SUM(m.monto::numeric)', 'total')
+      .addSelect('COUNT(*)', 'count')
       .where('m.usuario_id = :usuarioId', { usuarioId })
       .andWhere('m.tipo = :tipo', { tipo: 'gasto' })
       .andWhere("TO_CHAR(m.fecha::date, 'YYYY-MM') = :mes", { mes })

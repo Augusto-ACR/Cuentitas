@@ -116,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useMovimientosStore } from '@/stores/movimientos';
 import { useCuentasStore } from '@/stores/cuentas';
 import { http } from '@/lib/http';
@@ -164,7 +164,7 @@ function formatDia(d: string) {
 
 async function cambiarMes(m: string) {
   store.mes = m;
-  await Promise.all([store.cargar({ tipo: filtroTipo.value || undefined }), store.cargarResumen()]);
+  await Promise.all([store.cargar(), store.cargarResumen()]);
 }
 
 function abrirNuevo() {
@@ -207,8 +207,6 @@ onMounted(async () => {
     http.get<any[]>('/categorias').then(r => categorias.value = r),
   ]);
 });
-
-watch(filtroTipo, () => store.cargar({ tipo: filtroTipo.value || undefined }));
 </script>
 
 <style scoped>

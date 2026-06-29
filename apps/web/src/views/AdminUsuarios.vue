@@ -122,7 +122,7 @@ async function crearUsuario() {
 async function resetPassword() {
   errorMsg.value = '';
   try {
-    await http.patch(`/usuarios/${resetUsuario.value.id}/password`, { password: newPassword.value });
+    await http.post(`/usuarios/${resetUsuario.value.id}/reset-password`, { password: newPassword.value });
     modalReset.value = false;
   } catch (e: any) {
     errorMsg.value = e?.message ?? 'Error al cambiar la contraseña';
