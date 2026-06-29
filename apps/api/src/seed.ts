@@ -20,12 +20,13 @@ import { CargoRecurrente } from './entities/cargo-recurrente.entity';
 import { Movimiento } from './entities/movimiento.entity';
 import { Meta } from './entities/meta.entity';
 import { MetaParticipante } from './entities/meta-participante.entity';
+import { AporteMeta } from './entities/aporte-meta.entity';
 import { CotizacionDolar } from './entities/cotizacion-dolar.entity';
 
 const ds = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
-  entities: [Usuario, Categoria, Cuenta, Bucket, Recurrente, CargoRecurrente, Movimiento, Meta, MetaParticipante, CotizacionDolar],
+  entities: [Usuario, Categoria, Cuenta, Bucket, Recurrente, CargoRecurrente, Movimiento, Meta, MetaParticipante, AporteMeta, CotizacionDolar],
   synchronize: false,
 });
 
