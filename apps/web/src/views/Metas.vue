@@ -84,8 +84,13 @@
       </div>
 
       <!-- Participantes (compartida) -->
-      <div v-if="meta.tipo === 'compartida' && meta.participantes?.length" class="participantes">
-        <span v-for="p in meta.participantes" :key="p.id" class="part-chip">{{ p.usuario?.nombre ?? p.usuarioId }}</span>
+      <div v-if="meta.tipo === 'compartida'" class="participantes">
+        <span v-for="p in meta.participantes" :key="p.id" class="part-chip">
+          {{ p.usuario?.nombre ?? p.usuarioId }}
+          <span v-if="p.rol === 'owner'" class="part-owner">dueño</span>
+          <button v-if="esOwner(meta) && p.rol !== 'owner'" class="part-quitar" @click="quitarParticipante(meta, p)" title="Quitar">×</button>
+        </span>
+        <button v-if="esOwner(meta)" class="part-agregar" @click="abrirParticipantes(meta)">+ Agregar</button>
       </div>
 
       <!-- Acciones -->
@@ -195,11 +200,33 @@
         </form>
       </div>
     </div>
+
+    <!-- Modal agregar participante -->
+    <div v-if="modalParticipante" class="modal-overlay" @click.self="modalParticipante = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Sumar a {{ participandoMeta?.titulo }}</h2>
+          <button @click="modalParticipante = false" class="btn-cerrar">✕</button>
+        </div>
+        <form @submit.prevent="confirmarParticipante" style="display:flex;flex-direction:column;gap:14px">
+          <div class="field" v-if="disponiblesParaAgregar.length">
+            <label>Persona</label>
+            <select v-model="nuevoParticipante" required>
+              <option v-for="u in disponiblesParaAgregar" :key="u.id" :value="String(u.id)">{{ u.nombre }}</option>
+            </select>
+            <span class="field-hint">Va a ver esta meta y poder aportar desde sus propias cuentas.</span>
+          </div>
+          <p v-else class="disponible">Ya está toda la familia en esta meta.</p>
+          <p v-if="errorParticipante" class="error-msg">{{ errorParticipante }}</p>
+          <button type="submit" class="btn-guardar" :disabled="!disponiblesParaAgregar.length">Agregar</button>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useMetasStore } from '@/stores/metas';
 import { useDolarStore } from '@/stores/dolar';
 import { useAuthStore } from '@/stores/auth';
@@ -222,6 +249,10 @@ const retirandoMeta = ref<any>(null);
 const eliminandoMeta = ref<any>(null);
 const cuentaDevolucion = ref('');
 const errorRetiro = ref('');
+const modalParticipante = ref(false);
+const participandoMeta = ref<any>(null);
+const nuevoParticipante = ref('');
+const errorParticipante = ref('');
 
 const formMeta = ref({ titulo: '', objetivoUSD: '', plazoMeses: '', tipo: 'personal', sinObjetivo: false });
 const formAporte = ref({ montoARS: '', fecha: hoy(), cuentaId: '' });
@@ -243,6 +274,46 @@ function totalARS(meta: any): number {
 // Meta con objetivo, ya alcanzado y todavía no marcada como lograda.
 function estaLista(meta: any): boolean {
   return tieneObjetivo(meta) && !meta.completada && progresoUsd(meta) >= meta.objetivo;
+}
+
+// Solo el dueño de la meta puede sumar o quitar participantes.
+function esOwner(meta: any): boolean {
+  return meta?.ownerId === auth.usuario?.id;
+}
+
+// Familiares que todavía no están en la meta que se está editando.
+const disponiblesParaAgregar = computed(() => {
+  const meta = participandoMeta.value;
+  if (!meta) return [];
+  const yaIds = new Set((meta.participantes ?? []).map((p: any) => p.usuarioId));
+  return store.familia.filter((u: any) => !yaIds.has(u.id));
+});
+
+async function abrirParticipantes(meta: any) {
+  participandoMeta.value = meta;
+  errorParticipante.value = '';
+  await store.cargarFamilia();
+  nuevoParticipante.value = String(disponiblesParaAgregar.value[0]?.id ?? '');
+  modalParticipante.value = true;
+}
+
+async function confirmarParticipante() {
+  errorParticipante.value = '';
+  try {
+    await store.agregarParticipante(participandoMeta.value.id, parseInt(nuevoParticipante.value));
+    modalParticipante.value = false;
+  } catch (e: any) {
+    errorParticipante.value = e?.message ?? 'No se pudo agregar';
+  }
+}
+
+async function quitarParticipante(meta: any, p: any) {
+  if (!confirm(`¿Quitar a ${p.usuario?.nombre ?? 'esta persona'} de "${meta.titulo}"?`)) return;
+  try {
+    await store.quitarParticipante(meta.id, p.usuarioId);
+  } catch (e: any) {
+    alert(e?.message ?? 'No se pudo quitar');
+  }
 }
 
 function abrirNueva() {
@@ -385,7 +456,11 @@ onMounted(() => { store.cargar(); dolar.cargar(); cuentasStore.cargar(); });
 .aporte-monto.neg { color: var(--expense); }
 
 .participantes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.2); }
-.part-chip { background: var(--primary-soft); color: var(--primary); padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+.part-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-soft); color: var(--primary); padding: 5px 10px 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+.part-owner { font-size: 10px; font-weight: 600; opacity: .7; text-transform: uppercase; letter-spacing: .03em; }
+.part-quitar { background: none; border: none; color: var(--primary); opacity: .6; font-size: 15px; line-height: 1; cursor: pointer; padding: 0; }
+.part-quitar:hover { opacity: 1; }
+.part-agregar { background: none; border: 1px dashed var(--border); color: var(--text-soft); padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; }
 
 .meta-acciones { display: flex; gap: 18px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--surface-3); }
 .act-link { font-size: 12px; font-weight: 600; color: var(--text-soft); background: none; border: none; cursor: pointer; padding: 0; }

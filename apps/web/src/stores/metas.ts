@@ -4,9 +4,16 @@ import { http } from '@/lib/http';
 
 export const useMetasStore = defineStore('metas', () => {
   const items = ref<any[]>([]);
+  // Familia (todos los usuarios) para elegir participantes de metas compartidas.
+  const familia = ref<any[]>([]);
 
   async function cargar() {
     items.value = await http.get<any[]>('/metas');
+  }
+
+  async function cargarFamilia() {
+    if (familia.value.length) return;
+    familia.value = await http.get<any[]>('/usuarios/familia');
   }
 
   async function crear(data: any) {
@@ -39,5 +46,10 @@ export const useMetasStore = defineStore('metas', () => {
     await cargar();
   }
 
-  return { items, cargar, crear, agregarAporte, retirar, completar, eliminar, agregarParticipante };
+  async function quitarParticipante(metaId: number, usuarioId: number) {
+    await http.delete(`/metas/${metaId}/participantes/${usuarioId}`);
+    await cargar();
+  }
+
+  return { items, familia, cargar, cargarFamilia, crear, agregarAporte, retirar, completar, eliminar, agregarParticipante, quitarParticipante };
 });

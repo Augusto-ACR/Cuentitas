@@ -10,11 +10,12 @@ export class UsuariosService {
     @InjectRepository(Usuario) private readonly repo: Repository<Usuario>,
   ) {}
 
-  // Lista mínima para elegir participantes de metas (sin datos financieros)
+  // Lista mínima de toda la familia (incluido el admin) para elegir participantes
+  // de una meta compartida. No expone datos sensibles ni financieros.
   async familia() {
     return this.repo.find({
       select: ['id', 'nombre', 'username'],
-      where: { rol: 'miembro' },
+      order: { nombre: 'ASC' },
     });
   }
 
