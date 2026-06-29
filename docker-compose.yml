@@ -43,6 +43,16 @@ services:
       - api
     ports:
       - "8080:80"
+    networks:
+      - default
+      - caddy
 
 volumes:
   pgdata:
+
+networks:
+  # Red existente donde corre Caddy (cookiehaus). Solo nos sumamos a ella;
+  # no se modifica nada de ese proyecto. Permite que Caddy alcance a cuentitas-web-1.
+  caddy:
+    external: true
+    name: cookiehaus_default

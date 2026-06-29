@@ -1,11 +1,12 @@
-# Agregar este bloque al Caddyfile cuando tengas el dominio.
-# Reemplazá tudominio.com por el dominio real.
-# Reiniciá Caddy con: docker exec <caddy-container> caddy reload --config /etc/caddy/Caddyfile
+# Bloque para agregar al final del Caddyfile de Caddy (cookiehaus):
+#   /home/cookiehaus/cookiehaus/Caddyfile
+#
+# El contenedor cuentitas-web-1 comparte la red cookiehaus_default con Caddy,
+# así que se lo alcanza por nombre de contenedor (no por localhost).
+# Recargar Caddy con:
+#   docker exec cookiehaus-web-1 caddy reload --config /etc/caddy/Caddyfile
 
-tudominio.com {
-    reverse_proxy localhost:8080
+cuentitas.site {
+    reverse_proxy cuentitas-web-1:80
     encode gzip
-    log {
-        output file /var/log/caddy/cuentitas.log
-    }
 }
