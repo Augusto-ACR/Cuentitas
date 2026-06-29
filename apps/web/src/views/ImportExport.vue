@@ -37,7 +37,7 @@
     <!-- Preview -->
     <div v-if="preview" class="card">
       <div class="card-header">
-        <span class="card-title">Vista previa · {{ preview.validos.length }} para importar</span>
+        <span class="card-title">Vista previa · {{ totalImportar }} para importar</span>
         <button class="btn-cancelar" @click="preview = null">Cancelar</button>
       </div>
 
@@ -61,7 +61,7 @@
       <!-- Errores (max 5) -->
       <div v-if="preview.errores?.length" class="error-list">
         <div class="error-title">Filas con error</div>
-        <div v-for="(e, i) in preview.errores.slice(0,5)" :key="i" class="error-row">Fila {{ e.fila }}: {{ e.msg }}</div>
+        <div v-for="(e, i) in preview.errores.slice(0,5)" :key="i" class="error-row">{{ e.descripcion || e.fecha || 'Fila' }}: {{ e.error }}</div>
       </div>
 
       <button class="btn-confirmar" :disabled="confirmando" @click="confirmar">
@@ -90,11 +90,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { http } from '@/lib/http';
 import { ars } from '@/lib/format';
 
-const templateUrl = '/api/import-export/template';
+const templateUrl = '/api/import/plantilla.xlsx';
+const totalImportar = computed(() =>
+  (preview.value?.validos.length ?? 0) + (preview.value?.sinCategoria?.length ?? 0),
+);
 const preview = ref<any>(null);
 const cargando = ref(false);
 const confirmando = ref(false);
@@ -108,7 +111,7 @@ async function subirArchivo(e: Event) {
   const fd = new FormData();
   fd.append('file', file);
   try {
-    preview.value = await http.postForm<any>('/import-export/preview', fd);
+    preview.value = await http.postForm<any>('/import', fd);
   } finally {
     cargando.value = false;
   }
@@ -118,7 +121,8 @@ async function confirmar() {
   confirmando.value = true;
   resultado.value = null;
   try {
-    const res = await http.post<any>('/import-export/confirmar', { datos: preview.value.validos });
+    const items = [...preview.value.validos, ...(preview.value.sinCategoria ?? [])];
+    const res = await http.post<any>('/import/confirmar', { items });
     resultado.value = { ok: true, msg: `Se importaron ${res.importados} movimientos.` };
     preview.value = null;
   } catch {
@@ -131,7 +135,7 @@ async function confirmar() {
 async function exportar() {
   exportando.value = true;
   try {
-    const resp = await fetch('/api/import-export/export', { credentials: 'include' });
+    const resp = await fetch('/api/export.xlsx', { credentials: 'include' });
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
