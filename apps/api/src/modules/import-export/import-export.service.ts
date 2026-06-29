@@ -32,7 +32,8 @@ export class ImportExportService {
 
   async preview(usuarioId: number, buffer: Buffer) {
     const rows = await this.parseExcel(buffer);
-    const cuentasUsuario = await this.cuentas.find({ where: { usuarioId } });
+    // Solo cuentas en pesos: las USD son para ahorro y no reciben movimientos.
+    const cuentasUsuario = (await this.cuentas.find({ where: { usuarioId } })).filter(c => c.moneda !== 'USD');
     const cuentaMap = Object.fromEntries(cuentasUsuario.map(c => [c.nombre.toLowerCase(), c]));
 
     const validos: any[] = [], sinCategoria: any[] = [], duplicados: any[] = [], errores: any[] = [];

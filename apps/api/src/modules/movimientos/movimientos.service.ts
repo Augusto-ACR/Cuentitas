@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager } from 'typeorm';
 import { Movimiento } from '../../entities/movimiento.entity';
@@ -77,8 +77,19 @@ export class MovimientosService {
       .execute();
   }
 
+  // Las cuentas en dólares son solo vehículos de ahorro: no se permiten movimientos
+  // sobre ellas (así no se mezclan monedas en gastos/ingresos ni en los reportes).
+  private async asegurarCuentaARS(manager: EntityManager, usuarioId: number, cuentaId: number) {
+    if (!cuentaId) return;
+    const c = await manager.findOne(Cuenta, { where: { id: cuentaId, usuarioId } });
+    if (c && c.moneda === 'USD') {
+      throw new BadRequestException('Las cuentas en dólares son solo para ahorro: no se pueden usar en movimientos. Para mover dólares usá las metas/ahorros.');
+    }
+  }
+
   async crear(usuarioId: number, data: Partial<Movimiento>) {
     return this.dataSource.transaction(async (manager) => {
+      await this.asegurarCuentaARS(manager, usuarioId, data.cuentaId);
       const saved = await manager.save(manager.create(Movimiento, { ...data, usuarioId }));
       await this.ajustarSaldo(manager, usuarioId, saved.cuentaId, this.delta(saved.tipo, saved.monto));
       return saved;
@@ -89,6 +100,7 @@ export class MovimientosService {
     return this.dataSource.transaction(async (manager) => {
       const m = await manager.findOne(Movimiento, { where: { id, usuarioId } });
       if (!m) throw new NotFoundException();
+      if (data.cuentaId) await this.asegurarCuentaARS(manager, usuarioId, data.cuentaId);
       // Revertir el efecto del movimiento anterior sobre su cuenta...
       await this.ajustarSaldo(manager, usuarioId, m.cuentaId, -this.delta(m.tipo, m.monto));
       Object.assign(m, data);

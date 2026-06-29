@@ -54,7 +54,7 @@
           <div class="field">
             <label>Cuenta</label>
             <select v-model="form.cuentaId" required>
-              <option v-for="c in cuentasStore.cuentas" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+              <option v-for="c in cuentasStore.cuentasARS" :key="c.id" :value="c.id">{{ c.nombre }}</option>
             </select>
           </div>
           <div class="field"><label>Día aproximado del mes</label><input v-model="form.diaAprox" type="number" min="1" max="31" required /></div>
@@ -112,7 +112,7 @@ function fechaSugerida(dia: number): string {
 
 function abrirNuevo() {
   editando.value = null;
-  form.value = { nombre: '', categoriaId: '', cuentaId: String(cuentasStore.cuentas[0]?.id ?? ''), diaAprox: '1', montoEstimado: '' };
+  form.value = { nombre: '', categoriaId: '', cuentaId: String(cuentasStore.cuentasARS[0]?.id ?? ''), diaAprox: '1', montoEstimado: '' };
   modal.value = true;
 }
 

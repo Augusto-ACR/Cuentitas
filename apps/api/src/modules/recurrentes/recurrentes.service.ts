@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Recurrente } from '../../entities/recurrente.entity';
@@ -22,7 +22,18 @@ export class RecurrentesService {
     });
   }
 
+  // Un gasto fijo descuenta de su cuenta al cargarse: solo puede ser en pesos.
+  // Las cuentas en dólares son solo para ahorro (no entran en gastos).
+  private async asegurarCuentaARS(usuarioId: number, cuentaId: number) {
+    if (!cuentaId) return;
+    const c = await this.dataSource.getRepository(Cuenta).findOne({ where: { id: cuentaId, usuarioId } });
+    if (c && c.moneda === 'USD') {
+      throw new BadRequestException('Las cuentas en dólares son solo para ahorro: no se pueden usar en gastos fijos. Elegí una cuenta en pesos.');
+    }
+  }
+
   async crear(usuarioId: number, data: any) {
+    await this.asegurarCuentaARS(usuarioId, data.cuentaId);
     const r = this.recurrentes.create({ ...data, usuarioId });
     return this.recurrentes.save(r);
   }
@@ -30,6 +41,7 @@ export class RecurrentesService {
   async actualizar(usuarioId: number, id: number, data: any) {
     const r = await this.recurrentes.findOne({ where: { id, usuarioId } });
     if (!r) throw new NotFoundException();
+    if (data.cuentaId) await this.asegurarCuentaARS(usuarioId, data.cuentaId);
     Object.assign(r, data);
     return this.recurrentes.save(r);
   }

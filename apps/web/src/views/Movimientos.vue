@@ -101,7 +101,7 @@
           <div class="field">
             <label>Cuenta</label>
             <select v-model="form.cuentaId" required>
-              <option v-for="c in cuentasStore.cuentas" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+              <option v-for="c in cuentasStore.cuentasARS" :key="c.id" :value="c.id">{{ c.nombre }}</option>
             </select>
           </div>
           <p v-if="error" class="error-msg">{{ error }}</p>
@@ -172,7 +172,7 @@ async function cambiarMes(m: string) {
 
 function abrirNuevo() {
   editando.value = null;
-  form.value = { tipo: 'gasto', descripcion: '', monto: '', fecha: new Date().toISOString().split('T')[0], categoriaId: '', cuentaId: String(cuentasStore.cuentas[0]?.id ?? '') };
+  form.value = { tipo: 'gasto', descripcion: '', monto: '', fecha: new Date().toISOString().split('T')[0], categoriaId: '', cuentaId: String(cuentasStore.cuentasARS[0]?.id ?? '') };
   modal.value = true;
 }
 

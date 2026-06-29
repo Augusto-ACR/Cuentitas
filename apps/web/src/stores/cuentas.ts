@@ -42,5 +42,8 @@ export const useCuentasStore = defineStore('cuentas', () => {
     }, 0);
   });
 
-  return { cuentas, totalAhorros, cargar, patchCuenta, crear, eliminar, totalBancos };
+  // Solo cuentas en pesos: las USD son para ahorro y no se usan en movimientos/gastos fijos.
+  const cuentasARS = computed(() => cuentas.value.filter((c) => c.moneda !== 'USD'));
+
+  return { cuentas, cuentasARS, totalAhorros, cargar, patchCuenta, crear, eliminar, totalBancos };
 });
