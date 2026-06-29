@@ -42,11 +42,11 @@
       <div v-for="c in store.cuentas" :key="c.id" class="cuenta-card">
         <div class="cuenta-avatar">{{ c.nombre[0] }}</div>
         <div class="cuenta-info">
-          <div class="cuenta-nombre">{{ c.nombre }}</div>
-          <div class="cuenta-usd">{{ usd(parseFloat(c.saldo) / dolar.valorPreferido) }}</div>
+          <div class="cuenta-nombre">{{ c.nombre }} <span v-if="c.moneda === 'USD'" class="moneda-badge">USD</span></div>
+          <div class="cuenta-usd">{{ saldoSecundario(c) }}</div>
         </div>
         <div class="cuenta-right">
-          <div class="cuenta-saldo">{{ ars(c.saldo) }}</div>
+          <div class="cuenta-saldo">{{ saldoPrincipal(c) }}</div>
           <div class="cuenta-acciones">
             <button class="btn-editar" @click="abrirEditar(c)">Editar</button>
             <button class="btn-editar danger" @click="eliminarCuenta(c)">Borrar</button>
@@ -77,7 +77,7 @@
         </div>
         <form @submit.prevent="guardar" style="display:flex;flex-direction:column;gap:14px">
           <div class="field">
-            <label>{{ editandoItem?.nombre }}</label>
+            <label>{{ editandoItem?.nombre }} ({{ editandoItem?.moneda ?? 'ARS' }})</label>
             <input v-model="nuevoMonto" type="number" min="0" step="0.01" required />
           </div>
           <button type="submit" class="btn-guardar">Guardar</button>
@@ -93,8 +93,16 @@
           <button @click="modalNueva = false" class="btn-cerrar">✕</button>
         </div>
         <form @submit.prevent="crearCuenta" style="display:flex;flex-direction:column;gap:14px">
-          <div class="field"><label>Nombre</label><input v-model="formNueva.nombre" required placeholder="Ej: Banco, Billetera, Efectivo" /></div>
-          <div class="field"><label>Saldo actual</label><input v-model="formNueva.saldo" type="number" min="0" step="0.01" placeholder="0.00" /></div>
+          <div class="field"><label>Nombre</label><input v-model="formNueva.nombre" required placeholder="Ej: Banco, Billetera, Dólares" /></div>
+          <div class="field">
+            <label>Moneda</label>
+            <select v-model="formNueva.moneda">
+              <option value="ARS">Pesos (ARS)</option>
+              <option value="USD">Dólares (USD)</option>
+            </select>
+            <span class="field-hint" v-if="formNueva.moneda === 'USD'">El saldo se guarda en dólares. Sirve para ahorrar sin pasar a pesos.</span>
+          </div>
+          <div class="field"><label>Saldo actual ({{ formNueva.moneda }})</label><input v-model="formNueva.saldo" type="number" min="0" step="0.01" placeholder="0.00" /></div>
           <button type="submit" class="btn-guardar">Crear cuenta</button>
         </form>
       </div>
@@ -134,16 +142,26 @@ async function guardar() {
 }
 
 const modalNueva = ref(false);
-const formNueva = ref({ nombre: '', saldo: '' });
+const formNueva = ref({ nombre: '', saldo: '', moneda: 'ARS' });
 
 function abrirNueva() {
-  formNueva.value = { nombre: '', saldo: '' };
+  formNueva.value = { nombre: '', saldo: '', moneda: 'ARS' };
   modalNueva.value = true;
 }
 
 async function crearCuenta() {
-  await store.crear({ nombre: formNueva.value.nombre, saldo: formNueva.value.saldo || '0' });
+  await store.crear({ nombre: formNueva.value.nombre, saldo: formNueva.value.saldo || '0', moneda: formNueva.value.moneda });
   modalNueva.value = false;
+}
+
+// Saldo en su propia moneda; abajo, el equivalente en la otra.
+function saldoPrincipal(c: any): string {
+  return c.moneda === 'USD' ? usd(c.saldo) : ars(c.saldo);
+}
+function saldoSecundario(c: any): string {
+  return c.moneda === 'USD'
+    ? ars(parseFloat(c.saldo) * dolar.valorPreferido)
+    : usd(parseFloat(c.saldo) / dolar.valorPreferido);
 }
 
 async function eliminarCuenta(c: any) {
@@ -211,6 +229,8 @@ onMounted(() => { store.cargar(); dolar.cargar(); });
 .btn-cerrar { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: 12.5px; font-weight: 500; color: var(--text-soft); }
-.field input { padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; }
+.field input, .field select { padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; }
+.field-hint { font-size: 11px; color: var(--text-muted); }
+.moneda-badge { font-size: 9.5px; font-weight: 700; letter-spacing: .03em; background: var(--savings-soft); color: var(--savings); padding: 1px 6px; border-radius: 6px; vertical-align: middle; }
 .btn-guardar { padding: 12px; background: var(--primary); color: var(--surface); border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; }
 </style>

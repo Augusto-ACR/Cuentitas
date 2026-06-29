@@ -137,13 +137,17 @@
           <button @click="modalAporte = false" class="btn-cerrar">✕</button>
         </div>
         <form @submit.prevent="confirmarAporte" style="display:flex;flex-direction:column;gap:14px">
-          <div class="field"><label>Monto (ARS)</label><input v-model="formAporte.montoARS" type="number" min="1" required /></div>
           <div class="field">
             <label>Sale de la cuenta</label>
             <select v-model="formAporte.cuentaId" required>
-              <option v-for="c in cuentasStore.cuentas" :key="c.id" :value="String(c.id)">{{ c.nombre }} — {{ ars(c.saldo) }}</option>
+              <option v-for="c in cuentasStore.cuentas" :key="c.id" :value="String(c.id)">{{ c.nombre }} — {{ saldoCuenta(c) }}</option>
             </select>
             <span class="field-hint">El monto se descuenta de esta cuenta.</span>
+          </div>
+          <div class="field">
+            <label>Monto ({{ monedaAporte }})</label>
+            <input v-model="formAporte.montoARS" type="number" min="0.01" step="0.01" required />
+            <span class="field-hint" v-if="monedaAporte === 'USD'">Se ahorra como dólares, sin pasar a pesos.</span>
           </div>
           <div class="field"><label>Fecha</label><input v-model="formAporte.fecha" type="date" required /></div>
           <button type="submit" class="btn-guardar">Aportar</button>
@@ -159,17 +163,17 @@
           <button @click="modalRetiro = false" class="btn-cerrar">✕</button>
         </div>
         <form @submit.prevent="confirmarRetiro" style="display:flex;flex-direction:column;gap:14px">
-          <p class="disponible">Disponible: <strong>{{ ars(totalARS(retirandoMeta)) }}</strong></p>
-          <div class="field">
-            <label>Monto a retirar (ARS)</label>
-            <input v-model="formRetiro.montoARS" type="number" min="1" :max="totalARS(retirandoMeta)" required />
-            <button type="button" class="link-mini" @click="formRetiro.montoARS = String(totalARS(retirandoMeta))">Retirar todo</button>
-          </div>
           <div class="field">
             <label>Vuelve a la cuenta</label>
             <select v-model="formRetiro.cuentaId" required>
-              <option v-for="c in cuentasStore.cuentas" :key="c.id" :value="String(c.id)">{{ c.nombre }} — {{ ars(c.saldo) }}</option>
+              <option v-for="c in cuentasStore.cuentas" :key="c.id" :value="String(c.id)">{{ c.nombre }} — {{ saldoCuenta(c) }}</option>
             </select>
+          </div>
+          <p class="disponible">Disponible: <strong>{{ monedaRetiro === 'USD' ? usd(disponibleRetiro) : ars(disponibleRetiro) }}</strong></p>
+          <div class="field">
+            <label>Monto a retirar ({{ monedaRetiro }})</label>
+            <input v-model="formRetiro.montoARS" type="number" min="0.01" step="0.01" :max="disponibleRetiro" required />
+            <button type="button" class="link-mini" @click="formRetiro.montoARS = String(disponibleRetiro)">Retirar todo</button>
           </div>
           <div class="field"><label>Fecha</label><input v-model="formRetiro.fecha" type="date" required /></div>
           <p v-if="errorRetiro" class="error-msg">{{ errorRetiro }}</p>
@@ -271,6 +275,22 @@ function totalARS(meta: any): number {
   return (meta?.aportes ?? []).reduce((a: number, x: any) => a + parseFloat(x.montoARS), 0);
 }
 
+// Saldo de una cuenta en su propia moneda (para los selectores).
+function saldoCuenta(c: any): string {
+  return c.moneda === 'USD' ? usd(c.saldo) : ars(c.saldo);
+}
+
+// El aporte/retiro se hace en la moneda de la cuenta elegida.
+const cuentaAporte = computed(() => cuentasStore.cuentas.find((c: any) => String(c.id) === formAporte.value.cuentaId));
+const monedaAporte = computed(() => cuentaAporte.value?.moneda ?? 'ARS');
+const cuentaRetiro = computed(() => cuentasStore.cuentas.find((c: any) => String(c.id) === formRetiro.value.cuentaId));
+const monedaRetiro = computed(() => cuentaRetiro.value?.moneda ?? 'ARS');
+// Disponible para retirar, en la moneda de la cuenta destino.
+const disponibleRetiro = computed(() => {
+  if (!retirandoMeta.value) return 0;
+  return monedaRetiro.value === 'USD' ? progresoUsd(retirandoMeta.value) : totalARS(retirandoMeta.value);
+});
+
 // Meta con objetivo, ya alcanzado y todavía no marcada como lograda.
 function estaLista(meta: any): boolean {
   return tieneObjetivo(meta) && !meta.completada && progresoUsd(meta) >= meta.objetivo;
@@ -351,7 +371,7 @@ async function crearMeta() {
 }
 
 async function confirmarAporte() {
-  await store.agregarAporte(aportandoMeta.value.id, parseFloat(formAporte.value.montoARS), formAporte.value.fecha, parseInt(formAporte.value.cuentaId));
+  await store.agregarAporte(aportandoMeta.value.id, parseFloat(formAporte.value.montoARS), formAporte.value.fecha, parseInt(formAporte.value.cuentaId), monedaAporte.value);
   modalAporte.value = false;
   await cuentasStore.cargar();
 }
@@ -359,7 +379,7 @@ async function confirmarAporte() {
 async function confirmarRetiro() {
   errorRetiro.value = '';
   try {
-    await store.retirar(retirandoMeta.value.id, parseFloat(formRetiro.value.montoARS), formRetiro.value.fecha, parseInt(formRetiro.value.cuentaId));
+    await store.retirar(retirandoMeta.value.id, parseFloat(formRetiro.value.montoARS), formRetiro.value.fecha, parseInt(formRetiro.value.cuentaId), monedaRetiro.value);
     modalRetiro.value = false;
     await cuentasStore.cargar();
   } catch (e: any) {

@@ -16,6 +16,11 @@ export class Cuenta {
   @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
   saldo: string;
 
+  // Moneda del saldo: 'ARS' (default) o 'USD'. Las cuentas USD son vehículos de
+  // ahorro: su saldo vive en dólares y se convierte a pesos solo para el patrimonio.
+  @Column({ length: 3, default: 'ARS' })
+  moneda: string;
+
   @Column({ length: 50, default: 'wallet' })
   icono: string;
 

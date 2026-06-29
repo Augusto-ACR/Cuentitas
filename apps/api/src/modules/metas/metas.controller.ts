@@ -53,18 +53,18 @@ export class MetasController {
   agregarAporte(
     @UsuarioId() uid: number,
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { montoARS: number; fecha: string; cuentaId: number },
+    @Body() body: { montoARS: number; fecha: string; cuentaId: number; moneda?: string },
   ) {
-    return this.svc.agregarAporte(uid, id, body.montoARS, body.fecha, body.cuentaId);
+    return this.svc.agregarAporte(uid, id, body.montoARS, body.fecha, body.cuentaId, body.moneda);
   }
 
   @Post(':id/retiros')
   retirar(
     @UsuarioId() uid: number,
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { montoARS: number; fecha: string; cuentaId: number },
+    @Body() body: { montoARS: number; fecha: string; cuentaId: number; moneda?: string },
   ) {
-    return this.svc.retirar(uid, id, body.montoARS, body.fecha, body.cuentaId);
+    return this.svc.retirar(uid, id, body.montoARS, body.fecha, body.cuentaId, body.moneda);
   }
 
   @Post(':id/completar')

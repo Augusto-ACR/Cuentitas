@@ -64,10 +64,15 @@ export class MetasService {
     const cotizaciones = await this.dolar.ultimas();
     const aportesMeta = await this.aportes.find({ where: { metaId }, order: { fecha: 'DESC' } });
 
-    // Calcular progreso por cotización preferida del usuario
-    // "Dólares comprados" = suma de (montoARS / valorDelDiaDeLaCotizacionPreferida)
+    // Calcular progreso por cotización preferida del usuario.
+    // - Aportes en ARS: "dólares comprados" = montoARS / cotización del día del aporte.
+    // - Aportes en USD: el valor en dólares es nativo (montoUSD), no depende de la
+    //   cotización ni de la preferencia (ya están ahorrados como dólares).
     const calcProgreso = (pref: DolarPref) => {
       return aportesMeta.reduce((acc, a) => {
+        if (a.moneda === 'USD' && a.montoUSD != null) {
+          return acc + parseFloat(a.montoUSD);
+        }
         const valor = pref === 'oficial' ? parseFloat(a.valorOficial)
           : pref === 'mep' ? parseFloat(a.valorMEP)
           : parseFloat(a.valorBlue);
@@ -138,21 +143,28 @@ export class MetasService {
     return { ok: true };
   }
 
-  async agregarAporte(usuarioId: number, metaId: number, montoARS: number, fecha: string, cuentaId: number) {
+  // `monto` está expresado en la moneda indicada (ARS o USD). Si es USD, sale de
+  // una cuenta en dólares y la meta lo cuenta como dólares nativos (sin dolarizar);
+  // se guarda además una valuación en pesos (al blue del día) para los totales ARS.
+  async agregarAporte(usuarioId: number, metaId: number, monto: number, fecha: string, cuentaId: number, moneda: string = 'ARS') {
     // Verificar participación
     const part = await this.participantes.findOne({ where: { metaId, usuarioId } });
     if (!part) throw new ForbiddenException();
 
     // Congelar las 3 cotizaciones del día del aporte
     const cotizaciones = await this.dolar.ultimas();
+    const esUSD = moneda === 'USD';
+    const montoARS = esUSD ? monto * parseFloat(cotizaciones.blue.valor) : monto;
 
-    // Transferencia: registra el ahorro y resta de la cuenta de origen, todo en
-    // una transacción para que la cuenta y el aporte nunca queden descuadrados.
+    // Transferencia: registra el ahorro y resta de la cuenta de origen (en su propia
+    // moneda), todo en una transacción para que cuenta y aporte nunca se descuadren.
     return this.dataSource.transaction(async (manager) => {
       const aporte = await manager.save(
         manager.create(AporteMeta, {
           metaId, usuarioId, cuentaId,
           montoARS: String(montoARS),
+          moneda: esUSD ? 'USD' : 'ARS',
+          montoUSD: esUSD ? String(monto) : null,
           fecha,
           valorOficial: cotizaciones.oficial.valor,
           valorMEP: cotizaciones.mep.valor,
@@ -164,7 +176,7 @@ export class MetasService {
           .update(Cuenta)
           .set({ saldo: () => 'saldo - :monto' })
           .where('id = :cuentaId AND usuario_id = :usuarioId', { cuentaId, usuarioId })
-          .setParameter('monto', montoARS)
+          .setParameter('monto', monto)
           .execute();
       }
       return aporte;
@@ -182,19 +194,24 @@ export class MetasService {
 
   // Retiro: saca plata del ahorro (parcial o total) y la devuelve a una cuenta.
   // Se registra como un aporte negativo, con las cotizaciones del día del retiro.
-  async retirar(usuarioId: number, metaId: number, montoARS: number, fecha: string, cuentaId: number) {
+  async retirar(usuarioId: number, metaId: number, monto: number, fecha: string, cuentaId: number, moneda: string = 'ARS') {
     const part = await this.participantes.findOne({ where: { metaId, usuarioId } });
     if (!part) throw new ForbiddenException();
-    const monto = Math.abs(montoARS);
+    const m = Math.abs(monto);
     const cotizaciones = await this.dolar.ultimas();
+    const esUSD = moneda === 'USD';
+    // Valuación en pesos del retiro, para comparar contra el total ahorrado (en ARS).
+    const montoARS = esUSD ? m * parseFloat(cotizaciones.blue.valor) : m;
 
     return this.dataSource.transaction(async (manager) => {
       const total = await this.totalDeMeta(manager, metaId);
-      if (monto > total) throw new BadRequestException('No podés retirar más de lo ahorrado');
+      if (montoARS > total + 0.01) throw new BadRequestException('No podés retirar más de lo ahorrado');
       await manager.save(
         manager.create(AporteMeta, {
           metaId, usuarioId, cuentaId,
-          montoARS: String(-monto),
+          montoARS: String(-montoARS),
+          moneda: esUSD ? 'USD' : 'ARS',
+          montoUSD: esUSD ? String(-m) : null,
           fecha,
           valorOficial: cotizaciones.oficial.valor,
           valorMEP: cotizaciones.mep.valor,
@@ -206,7 +223,7 @@ export class MetasService {
           .update(Cuenta)
           .set({ saldo: () => 'saldo + :monto' })
           .where('id = :cuentaId AND usuario_id = :usuarioId', { cuentaId, usuarioId })
-          .setParameter('monto', monto)
+          .setParameter('monto', m)
           .execute();
       }
       return { ok: true };

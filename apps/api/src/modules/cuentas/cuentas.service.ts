@@ -24,8 +24,9 @@ export class CuentasService {
     return this.cuentas.save(c);
   }
 
-  async crearCuenta(usuarioId: number, data: { nombre: string; saldo?: string; icono?: string }) {
-    return this.cuentas.save(this.cuentas.create({ usuarioId, saldo: '0', icono: 'wallet', ...data }));
+  async crearCuenta(usuarioId: number, data: { nombre: string; saldo?: string; icono?: string; moneda?: string }) {
+    const moneda = data.moneda === 'USD' ? 'USD' : 'ARS';
+    return this.cuentas.save(this.cuentas.create({ usuarioId, saldo: '0', icono: 'wallet', ...data, moneda }));
   }
 
   // No se puede eliminar una cuenta con movimientos o gastos fijos asociados (rompería el historial).

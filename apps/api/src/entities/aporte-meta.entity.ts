@@ -21,6 +21,15 @@ export class AporteMeta {
   @Column({ name: 'monto_ars', type: 'numeric', precision: 14, scale: 2 })
   montoARS: string;
 
+  // Moneda en la que se hizo el aporte: 'ARS' (default) o 'USD'.
+  @Column({ length: 3, default: 'ARS' })
+  moneda: string;
+
+  // Monto nativo en USD cuando moneda='USD' (es lo que cuenta para el progreso de
+  // la meta, sin dolarizar). Para aportes en ARS queda null. Negativo en retiros.
+  @Column({ name: 'monto_usd', type: 'numeric', precision: 14, scale: 2, nullable: true })
+  montoUSD: string | null;
+
   @Column({ type: 'date' })
   fecha: string;
 

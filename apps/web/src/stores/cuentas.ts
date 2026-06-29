@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { http } from '@/lib/http';
+import { useDolarStore } from './dolar';
 
 export const useCuentasStore = defineStore('cuentas', () => {
   const cuentas = ref<any[]>([]);
@@ -21,7 +22,7 @@ export const useCuentasStore = defineStore('cuentas', () => {
     await cargar();
   }
 
-  async function crear(data: { nombre: string; saldo?: string }) {
+  async function crear(data: { nombre: string; saldo?: string; moneda?: string }) {
     await http.post('/cuentas', data);
     await cargar();
   }
@@ -31,9 +32,15 @@ export const useCuentasStore = defineStore('cuentas', () => {
     await cargar();
   }
 
-  const totalBancos = computed(() =>
-    cuentas.value.reduce((a, c) => a + parseFloat(c.saldo ?? 0), 0),
-  );
+  // Total de bancos en pesos-equivalente: las cuentas en USD se convierten al
+  // dólar preferido del usuario (solo para el patrimonio; el saldo sigue en USD).
+  const totalBancos = computed(() => {
+    const dolar = useDolarStore();
+    return cuentas.value.reduce((a, c) => {
+      const saldo = parseFloat(c.saldo ?? 0);
+      return a + (c.moneda === 'USD' ? saldo * dolar.valorPreferido : saldo);
+    }, 0);
+  });
 
   return { cuentas, totalAhorros, cargar, patchCuenta, crear, eliminar, totalBancos };
 });

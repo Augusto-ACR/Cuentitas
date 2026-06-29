@@ -21,13 +21,15 @@ export const useMetasStore = defineStore('metas', () => {
     await cargar();
   }
 
-  async function agregarAporte(metaId: number, montoARS: number, fecha: string, cuentaId: number) {
-    await http.post(`/metas/${metaId}/aportes`, { montoARS, fecha, cuentaId });
+  // `monto` va en la moneda indicada (ARS o USD, según la cuenta de origen).
+  // Se manda en el campo montoARS por compatibilidad de la API.
+  async function agregarAporte(metaId: number, monto: number, fecha: string, cuentaId: number, moneda = 'ARS') {
+    await http.post(`/metas/${metaId}/aportes`, { montoARS: monto, fecha, cuentaId, moneda });
     await cargar();
   }
 
-  async function retirar(metaId: number, montoARS: number, fecha: string, cuentaId: number) {
-    await http.post(`/metas/${metaId}/retiros`, { montoARS, fecha, cuentaId });
+  async function retirar(metaId: number, monto: number, fecha: string, cuentaId: number, moneda = 'ARS') {
+    await http.post(`/metas/${metaId}/retiros`, { montoARS: monto, fecha, cuentaId, moneda });
     await cargar();
   }
 
