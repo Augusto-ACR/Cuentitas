@@ -21,9 +21,19 @@ export const useCuentasStore = defineStore('cuentas', () => {
     await cargar();
   }
 
+  async function crear(data: { nombre: string; saldo?: string }) {
+    await http.post('/cuentas', data);
+    await cargar();
+  }
+
+  async function eliminar(id: number) {
+    await http.delete(`/cuentas/${id}`);
+    await cargar();
+  }
+
   const totalBancos = computed(() =>
     cuentas.value.reduce((a, c) => a + parseFloat(c.saldo ?? 0), 0),
   );
 
-  return { cuentas, totalAhorros, cargar, patchCuenta, totalBancos };
+  return { cuentas, totalAhorros, cargar, patchCuenta, crear, eliminar, totalBancos };
 });

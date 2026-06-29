@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
 import { CuentasService } from './cuentas.service';
 import { UsuarioId } from '../../common/decorators';
 
@@ -15,5 +15,10 @@ export class CuentasController {
   @Patch('cuentas/:id')
   patchCuenta(@UsuarioId() uid: number, @Param('id', ParseIntPipe) id: number, @Body() body: any) {
     return this.svc.patchCuenta(uid, id, body);
+  }
+
+  @Delete('cuentas/:id')
+  eliminarCuenta(@UsuarioId() uid: number, @Param('id', ParseIntPipe) id: number) {
+    return this.svc.eliminarCuenta(uid, id);
   }
 }

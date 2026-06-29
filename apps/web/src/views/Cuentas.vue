@@ -5,7 +5,10 @@
         <div class="page-sub">Cuentitas</div>
         <h1 class="page-title">Cuentas</h1>
       </div>
-      <div class="avatar" @click="irPerfil" role="button" tabindex="0">{{ auth.usuario?.nombre?.[0] }}</div>
+      <div class="header-right">
+        <button class="btn-nueva" @click="abrirNueva">+ Nueva</button>
+        <div class="avatar" @click="irPerfil" role="button" tabindex="0">{{ auth.usuario?.nombre?.[0] }}</div>
+      </div>
     </header>
 
     <!-- Patrimonio total -->
@@ -30,7 +33,12 @@
       <span class="section-title">Bancos</span>
       <span class="section-total">{{ ars(store.totalBancos) }}</span>
     </div>
-    <div class="cuenta-list">
+    <div v-if="!store.cuentas.length" class="empty-cuentas">
+      <p class="empty-titulo">Todavía no tenés cuentas</p>
+      <p class="empty-sub">Agregá tu primera cuenta (banco, billetera o efectivo) para empezar a registrar tu plata.</p>
+      <button class="btn-nueva-grande" @click="abrirNueva">+ Crear mi primera cuenta</button>
+    </div>
+    <div v-else class="cuenta-list">
       <div v-for="c in store.cuentas" :key="c.id" class="cuenta-card">
         <div class="cuenta-avatar">{{ c.nombre[0] }}</div>
         <div class="cuenta-info">
@@ -39,7 +47,10 @@
         </div>
         <div class="cuenta-right">
           <div class="cuenta-saldo">{{ ars(c.saldo) }}</div>
-          <button class="btn-editar" @click="abrirEditar(c)">Editar saldo</button>
+          <div class="cuenta-acciones">
+            <button class="btn-editar" @click="abrirEditar(c)">Editar</button>
+            <button class="btn-editar danger" @click="eliminarCuenta(c)">Borrar</button>
+          </div>
         </div>
       </div>
     </div>
@@ -70,6 +81,21 @@
             <input v-model="nuevoMonto" type="number" min="0" step="0.01" required />
           </div>
           <button type="submit" class="btn-guardar">Guardar</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal nueva cuenta -->
+    <div v-if="modalNueva" class="modal-overlay" @click.self="modalNueva = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Nueva cuenta</h2>
+          <button @click="modalNueva = false" class="btn-cerrar">✕</button>
+        </div>
+        <form @submit.prevent="crearCuenta" style="display:flex;flex-direction:column;gap:14px">
+          <div class="field"><label>Nombre</label><input v-model="formNueva.nombre" required placeholder="Ej: Banco, Billetera, Efectivo" /></div>
+          <div class="field"><label>Saldo actual</label><input v-model="formNueva.saldo" type="number" min="0" step="0.01" placeholder="0.00" /></div>
+          <button type="submit" class="btn-guardar">Crear cuenta</button>
         </form>
       </div>
     </div>
@@ -107,6 +133,28 @@ async function guardar() {
   modal.value = false;
 }
 
+const modalNueva = ref(false);
+const formNueva = ref({ nombre: '', saldo: '' });
+
+function abrirNueva() {
+  formNueva.value = { nombre: '', saldo: '' };
+  modalNueva.value = true;
+}
+
+async function crearCuenta() {
+  await store.crear({ nombre: formNueva.value.nombre, saldo: formNueva.value.saldo || '0' });
+  modalNueva.value = false;
+}
+
+async function eliminarCuenta(c: any) {
+  if (!confirm(`¿Eliminar la cuenta "${c.nombre}"?`)) return;
+  try {
+    await store.eliminar(c.id);
+  } catch (e: any) {
+    alert(e?.message ?? 'No se pudo eliminar la cuenta');
+  }
+}
+
 onMounted(() => { store.cargar(); dolar.cargar(); });
 </script>
 
@@ -116,6 +164,15 @@ onMounted(() => { store.cargar(); dolar.cargar(); });
 .page-sub { font-size: 11px; color: var(--text-muted); }
 .page-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 22px; color: var(--text); }
 .avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; font-family: 'Space Grotesk', sans-serif; cursor: pointer; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.btn-nueva { background: var(--primary); color: var(--surface); border: none; border-radius: 12px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+.empty-cuentas { background: var(--surface); border: 1px dashed var(--border); border-radius: 16px; padding: 28px 20px; text-align: center; }
+.empty-titulo { font-size: 14px; font-weight: 600; color: var(--text); }
+.empty-sub { font-size: 12.5px; color: var(--text-muted); line-height: 1.5; margin: 6px 0 16px; }
+.btn-nueva-grande { background: var(--primary); color: var(--surface); border: none; border-radius: 12px; padding: 11px 18px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.cuenta-acciones { display: flex; gap: 10px; justify-content: flex-end; margin-top: 2px; }
+.btn-editar.danger { color: var(--expense); }
 
 .patrimonio-card { background: var(--hero-bg); border-radius: 18px; padding: 18px; margin-bottom: 20px; color: var(--hero-text); }
 .pat-label { font-size: 11.5px; color: var(--hero-muted); }
