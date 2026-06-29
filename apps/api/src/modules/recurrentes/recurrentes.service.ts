@@ -37,8 +37,13 @@ export class RecurrentesService {
   async eliminar(usuarioId: number, id: number) {
     const r = await this.recurrentes.findOne({ where: { id, usuarioId } });
     if (!r) throw new NotFoundException();
-    await this.recurrentes.remove(r);
-    return { ok: true };
+    return this.dataSource.transaction(async (manager) => {
+      // Desvincular los movimientos que apuntan a esta plantilla: quedan como
+      // gastos sueltos (no se borran) para no romper la FK ni perder historial.
+      await manager.update(Movimiento, { recurrenteId: id, usuarioId }, { recurrenteId: null });
+      await manager.delete(Recurrente, { id, usuarioId });
+      return { ok: true };
+    });
   }
 
   // Carga la plantilla como un gasto del mes: crea el movimiento y baja el saldo,
