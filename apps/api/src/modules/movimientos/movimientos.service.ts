@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, Between } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { Movimiento } from '../../entities/movimiento.entity';
+import { Cuenta } from '../../entities/cuenta.entity';
 
 export interface FiltrosMovimiento {
   mes?: string;
@@ -17,6 +18,7 @@ export interface FiltrosMovimiento {
 export class MovimientosService {
   constructor(
     @InjectRepository(Movimiento) private readonly repo: Repository<Movimiento>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async listar(usuarioId: number, filtros: FiltrosMovimiento = {}) {
@@ -58,22 +60,52 @@ export class MovimientosService {
     return { mes, ingresos, gastos, balance: ingresos - gastos };
   }
 
+  // Cuánto mueve el saldo de la cuenta este movimiento: +monto si ingreso, -monto si gasto.
+  private delta(tipo: string, monto: any): number {
+    return (tipo === 'ingreso' ? 1 : -1) * (parseFloat(monto) || 0);
+  }
+
+  // Ajusta el saldo de la cuenta sumando `delta` (puede ser negativo).
+  // La aritmética la hace Postgres en numeric para evitar drift de punto flotante.
+  private async ajustarSaldo(manager: EntityManager, usuarioId: number, cuentaId: number, delta: number) {
+    if (!cuentaId || !delta) return;
+    await manager.createQueryBuilder()
+      .update(Cuenta)
+      .set({ saldo: () => 'saldo + :delta' })
+      .where('id = :cuentaId AND usuario_id = :usuarioId', { cuentaId, usuarioId })
+      .setParameter('delta', delta)
+      .execute();
+  }
+
   async crear(usuarioId: number, data: Partial<Movimiento>) {
-    const m = this.repo.create({ ...data, usuarioId });
-    return this.repo.save(m);
+    return this.dataSource.transaction(async (manager) => {
+      const saved = await manager.save(manager.create(Movimiento, { ...data, usuarioId }));
+      await this.ajustarSaldo(manager, usuarioId, saved.cuentaId, this.delta(saved.tipo, saved.monto));
+      return saved;
+    });
   }
 
   async actualizar(usuarioId: number, id: number, data: Partial<Movimiento>) {
-    const m = await this.repo.findOne({ where: { id, usuarioId } });
-    if (!m) throw new NotFoundException();
-    Object.assign(m, data);
-    return this.repo.save(m);
+    return this.dataSource.transaction(async (manager) => {
+      const m = await manager.findOne(Movimiento, { where: { id, usuarioId } });
+      if (!m) throw new NotFoundException();
+      // Revertir el efecto del movimiento anterior sobre su cuenta...
+      await this.ajustarSaldo(manager, usuarioId, m.cuentaId, -this.delta(m.tipo, m.monto));
+      Object.assign(m, data);
+      const saved = await manager.save(m);
+      // ...y aplicar el nuevo (puede haber cambiado de cuenta, tipo o monto).
+      await this.ajustarSaldo(manager, usuarioId, saved.cuentaId, this.delta(saved.tipo, saved.monto));
+      return saved;
+    });
   }
 
   async eliminar(usuarioId: number, id: number) {
-    const m = await this.repo.findOne({ where: { id, usuarioId } });
-    if (!m) throw new NotFoundException();
-    await this.repo.remove(m);
-    return { ok: true };
+    return this.dataSource.transaction(async (manager) => {
+      const m = await manager.findOne(Movimiento, { where: { id, usuarioId } });
+      if (!m) throw new NotFoundException();
+      await this.ajustarSaldo(manager, usuarioId, m.cuentaId, -this.delta(m.tipo, m.monto));
+      await manager.remove(m);
+      return { ok: true };
+    });
   }
 }

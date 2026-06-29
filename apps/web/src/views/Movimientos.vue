@@ -188,7 +188,7 @@ async function guardar() {
     if (editando.value) await store.actualizar(editando.value.id, data);
     else await store.crear(data);
     cerrarModal();
-    await store.cargarResumen();
+    await Promise.all([store.cargarResumen(), cuentasStore.cargar()]);
   } catch (e: any) { error.value = e.message; }
 }
 
@@ -196,7 +196,7 @@ async function eliminar() {
   if (!editando.value) return;
   await store.eliminar(editando.value.id);
   cerrarModal();
-  await store.cargarResumen();
+  await Promise.all([store.cargarResumen(), cuentasStore.cargar()]);
 }
 
 onMounted(async () => {
