@@ -1,0 +1,8 @@
+# Forzar saltos de línea LF en los scripts que corren en Linux (VPS).
+# Sin esto, Git en Windows los sube con CRLF y bash falla con "bad interpreter".
+*.sh           text eol=lf
+entrypoint.sh  text eol=lf
+deploy.sh      text eol=lf
+Dockerfile     text eol=lf
+*.yml          text eol=lf
+*.yaml         text eol=lf

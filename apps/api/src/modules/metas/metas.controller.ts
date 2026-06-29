@@ -1,0 +1,56 @@
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
+import { MetasService } from './metas.service';
+import { UsuarioId } from '../../common/decorators';
+
+@Controller('metas')
+export class MetasController {
+  constructor(private readonly svc: MetasService) {}
+
+  @Get()
+  listar(@UsuarioId() uid: number) { return this.svc.listar(uid); }
+
+  @Post()
+  crear(@UsuarioId() uid: number, @Body() body: any) { return this.svc.crear(uid, body); }
+
+  @Get(':id')
+  detalle(@UsuarioId() uid: number, @Param('id', ParseIntPipe) id: number) {
+    return this.svc.getDetalle(uid, id);
+  }
+
+  @Patch(':id')
+  actualizar(@UsuarioId() uid: number, @Param('id', ParseIntPipe) id: number, @Body() body: any) {
+    return this.svc.actualizar(uid, id, body);
+  }
+
+  @Delete(':id')
+  eliminar(@UsuarioId() uid: number, @Param('id', ParseIntPipe) id: number) {
+    return this.svc.eliminar(uid, id);
+  }
+
+  @Post(':id/participantes')
+  agregarParticipante(
+    @UsuarioId() uid: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { usuarioId: number },
+  ) {
+    return this.svc.agregarParticipante(uid, id, body.usuarioId);
+  }
+
+  @Delete(':id/participantes/:uid')
+  quitarParticipante(
+    @UsuarioId() uid: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('uid', ParseIntPipe) quitarId: number,
+  ) {
+    return this.svc.quitarParticipante(uid, id, quitarId);
+  }
+
+  @Post(':id/aportes')
+  agregarAporte(
+    @UsuarioId() uid: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { montoARS: number; fecha: string },
+  ) {
+    return this.svc.agregarAporte(uid, id, body.montoARS, body.fecha);
+  }
+}

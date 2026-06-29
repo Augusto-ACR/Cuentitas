@@ -1,0 +1,11 @@
+# Agregar este bloque al Caddyfile cuando tengas el dominio.
+# Reemplazá tudominio.com por el dominio real.
+# Reiniciá Caddy con: docker exec <caddy-container> caddy reload --config /etc/caddy/Caddyfile
+
+tudominio.com {
+    reverse_proxy localhost:8080
+    encode gzip
+    log {
+        output file /var/log/caddy/cuentitas.log
+    }
+}
