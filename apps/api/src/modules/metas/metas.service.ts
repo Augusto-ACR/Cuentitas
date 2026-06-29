@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Meta } from '../../entities/meta.entity';
@@ -99,12 +99,24 @@ export class MetasService {
     return this.metas.findOne({ where: { id: metaId } });
   }
 
-  async eliminar(usuarioId: number, metaId: number) {
+  async eliminar(usuarioId: number, metaId: number, cuentaDevolucionId?: number) {
     const part = await this.participantes.findOne({ where: { metaId, usuarioId, rol: 'owner' } });
     if (!part) throw new ForbiddenException();
-    const meta = await this.metas.findOne({ where: { id: metaId } });
-    await this.metas.remove(meta);
-    return { ok: true };
+    return this.dataSource.transaction(async (manager) => {
+      // Si todavía tiene plata ahorrada, devolverla a la cuenta indicada antes de borrar.
+      const total = await this.totalDeMeta(manager, metaId);
+      if (total > 0 && cuentaDevolucionId) {
+        await manager.createQueryBuilder()
+          .update(Cuenta)
+          .set({ saldo: () => 'saldo + :monto' })
+          .where('id = :cuentaId AND usuario_id = :usuarioId', { cuentaId: cuentaDevolucionId, usuarioId })
+          .setParameter('monto', total)
+          .execute();
+      }
+      const meta = await manager.findOne(Meta, { where: { id: metaId } });
+      await manager.remove(meta);
+      return { ok: true };
+    });
   }
 
   async agregarParticipante(usuarioId: number, metaId: number, nuevoUsuarioId: number) {
@@ -157,6 +169,56 @@ export class MetasService {
       }
       return aporte;
     });
+  }
+
+  // Total ahorrado en una meta (suma de aportes menos retiros, en ARS).
+  private async totalDeMeta(manager: any, metaId: number): Promise<number> {
+    const row = await manager.createQueryBuilder(AporteMeta, 'a')
+      .select('COALESCE(SUM(a.monto_ars::numeric), 0)', 'sum')
+      .where('a.meta_id = :metaId', { metaId })
+      .getRawOne();
+    return parseFloat(row.sum) || 0;
+  }
+
+  // Retiro: saca plata del ahorro (parcial o total) y la devuelve a una cuenta.
+  // Se registra como un aporte negativo, con las cotizaciones del día del retiro.
+  async retirar(usuarioId: number, metaId: number, montoARS: number, fecha: string, cuentaId: number) {
+    const part = await this.participantes.findOne({ where: { metaId, usuarioId } });
+    if (!part) throw new ForbiddenException();
+    const monto = Math.abs(montoARS);
+    const cotizaciones = await this.dolar.ultimas();
+
+    return this.dataSource.transaction(async (manager) => {
+      const total = await this.totalDeMeta(manager, metaId);
+      if (monto > total) throw new BadRequestException('No podés retirar más de lo ahorrado');
+      await manager.save(
+        manager.create(AporteMeta, {
+          metaId, usuarioId, cuentaId,
+          montoARS: String(-monto),
+          fecha,
+          valorOficial: cotizaciones.oficial.valor,
+          valorMEP: cotizaciones.mep.valor,
+          valorBlue: cotizaciones.blue.valor,
+        }),
+      );
+      if (cuentaId) {
+        await manager.createQueryBuilder()
+          .update(Cuenta)
+          .set({ saldo: () => 'saldo + :monto' })
+          .where('id = :cuentaId AND usuario_id = :usuarioId', { cuentaId, usuarioId })
+          .setParameter('monto', monto)
+          .execute();
+      }
+      return { ok: true };
+    });
+  }
+
+  // Marca la meta como lograda. El festejo es del lado del front.
+  async completar(usuarioId: number, metaId: number) {
+    const part = await this.participantes.findOne({ where: { metaId, usuarioId, rol: 'owner' } });
+    if (!part) throw new ForbiddenException('Solo el owner puede completar la meta');
+    await this.metas.update(metaId, { completada: true });
+    return { ok: true };
   }
 
   // Total ahorrado por el usuario en ARS (suma de SUS aportes a cualquier meta/ahorro).

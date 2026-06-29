@@ -19,10 +19,25 @@ export const useMetasStore = defineStore('metas', () => {
     await cargar();
   }
 
+  async function retirar(metaId: number, montoARS: number, fecha: string, cuentaId: number) {
+    await http.post(`/metas/${metaId}/retiros`, { montoARS, fecha, cuentaId });
+    await cargar();
+  }
+
+  async function completar(metaId: number) {
+    await http.post(`/metas/${metaId}/completar`);
+    await cargar();
+  }
+
+  async function eliminar(metaId: number, cuentaId?: number) {
+    await http.delete(`/metas/${metaId}`, cuentaId ? { cuentaId } : undefined);
+    await cargar();
+  }
+
   async function agregarParticipante(metaId: number, usuarioId: number) {
     await http.post(`/metas/${metaId}/participantes`, { usuarioId });
     await cargar();
   }
 
-  return { items, cargar, crear, agregarAporte, agregarParticipante };
+  return { items, cargar, crear, agregarAporte, retirar, completar, eliminar, agregarParticipante };
 });

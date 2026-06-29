@@ -27,8 +27,8 @@ export class MetasController {
   }
 
   @Delete(':id')
-  eliminar(@UsuarioId() uid: number, @Param('id', ParseIntPipe) id: number) {
-    return this.svc.eliminar(uid, id);
+  eliminar(@UsuarioId() uid: number, @Param('id', ParseIntPipe) id: number, @Body() body: { cuentaId?: number } = {}) {
+    return this.svc.eliminar(uid, id, body?.cuentaId);
   }
 
   @Post(':id/participantes')
@@ -56,5 +56,19 @@ export class MetasController {
     @Body() body: { montoARS: number; fecha: string; cuentaId: number },
   ) {
     return this.svc.agregarAporte(uid, id, body.montoARS, body.fecha, body.cuentaId);
+  }
+
+  @Post(':id/retiros')
+  retirar(
+    @UsuarioId() uid: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { montoARS: number; fecha: string; cuentaId: number },
+  ) {
+    return this.svc.retirar(uid, id, body.montoARS, body.fecha, body.cuentaId);
+  }
+
+  @Post(':id/completar')
+  completar(@UsuarioId() uid: number, @Param('id', ParseIntPipe) id: number) {
+    return this.svc.completar(uid, id);
   }
 }

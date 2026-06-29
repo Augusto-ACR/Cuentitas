@@ -30,6 +30,9 @@ export class Meta {
   @Column({ name: 'rate_type_override', type: 'varchar', nullable: true })
   rateTypeOverride: DolarPref;
 
+  @Column({ type: 'boolean', default: false })
+  completada: boolean;
+
   @ManyToOne(() => Usuario, u => u.metas, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })
   owner: Usuario;
