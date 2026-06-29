@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
 import { Recurrente } from '../../entities/recurrente.entity';
 import { CargoRecurrente } from '../../entities/cargo-recurrente.entity';
 import { Movimiento } from '../../entities/movimiento.entity';
+import { Cuenta } from '../../entities/cuenta.entity';
 
 @Injectable()
 export class RecurrentesService {
@@ -14,6 +15,7 @@ export class RecurrentesService {
     @InjectRepository(Recurrente) private readonly recurrentes: Repository<Recurrente>,
     @InjectRepository(CargoRecurrente) private readonly cargos: Repository<CargoRecurrente>,
     @InjectRepository(Movimiento) private readonly movimientos: Repository<Movimiento>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async listar(usuarioId: number, mes?: string) {
@@ -57,14 +59,20 @@ export class RecurrentesService {
     return { ok: true };
   }
 
+  // Ajusta el saldo de una cuenta sumando delta (negativo para restar). Aritmética en numeric.
+  private async ajustarSaldo(manager: EntityManager, usuarioId: number, cuentaId: number, delta: number) {
+    if (!cuentaId || !delta) return;
+    await manager.createQueryBuilder()
+      .update(Cuenta)
+      .set({ saldo: () => 'saldo + :delta' })
+      .where('id = :cuentaId AND usuario_id = :usuarioId', { cuentaId, usuarioId })
+      .setParameter('delta', delta)
+      .execute();
+  }
+
   async confirmar(usuarioId: number, recurrenteId: number, mes: string, monto: number) {
     const rec = await this.recurrentes.findOne({ where: { id: recurrenteId, usuarioId } });
     if (!rec) throw new NotFoundException();
-
-    let cargo = await this.cargos.findOne({ where: { recurrenteId, mes } });
-    if (!cargo) {
-      cargo = this.cargos.create({ recurrenteId, mes, estado: 'por-confirmar' });
-    }
 
     // Calcular Δ% respecto al mes anterior confirmado
     const anterior = await this.cargos
@@ -80,30 +88,61 @@ export class RecurrentesService {
       ? ((monto - parseFloat(anterior.monto)) / parseFloat(anterior.monto)) * 100
       : null;
 
-    // Crear movimiento scopeado al usuario
-    const fechaNum = `${mes}-${String(rec.diaAprox).padStart(2, '0')}`;
-    const mov = await this.movimientos.save(
-      this.movimientos.create({
-        usuarioId,
-        fecha: fechaNum,
-        monto: String(monto),
-        tipo: 'gasto',
-        descripcion: rec.nombre,
-        categoriaId: rec.categoriaId,
-        cuentaId: rec.cuentaId,
-        recurrenteId: rec.id,
-      }),
-    );
+    // Confirmar es un gasto real: crea el movimiento y baja el saldo de la cuenta, en transacción.
+    return this.dataSource.transaction(async (manager) => {
+      let cargo = await manager.findOne(CargoRecurrente, { where: { recurrenteId, mes } });
+      if (!cargo) cargo = manager.create(CargoRecurrente, { recurrenteId, mes, estado: 'por-confirmar' });
 
-    cargo.monto = String(monto);
-    cargo.estado = 'confirmado';
-    cargo.movimientoId = mov.id;
-    await this.cargos.save(cargo);
+      const fechaNum = `${mes}-${String(rec.diaAprox).padStart(2, '0')}`;
+      const mov = await manager.save(
+        manager.create(Movimiento, {
+          usuarioId,
+          fecha: fechaNum,
+          monto: String(monto),
+          tipo: 'gasto',
+          descripcion: rec.nombre,
+          categoriaId: rec.categoriaId,
+          cuentaId: rec.cuentaId,
+          recurrenteId: rec.id,
+        }),
+      );
+      await this.ajustarSaldo(manager, usuarioId, rec.cuentaId, -monto);
 
-    // Actualizar estimado para el próximo mes
-    await this.recurrentes.update(rec.id, { montoEstimado: String(monto) });
+      cargo.monto = String(monto);
+      cargo.estado = 'confirmado';
+      cargo.movimientoId = mov.id;
+      await manager.save(cargo);
 
-    return { cargo, movimiento: mov, delta: delta !== null ? Math.round(delta * 10) / 10 : null };
+      await manager.update(Recurrente, rec.id, { montoEstimado: String(monto) });
+
+      return { cargo, movimiento: mov, delta: delta !== null ? Math.round(delta * 10) / 10 : null };
+    });
+  }
+
+  // Des-confirmar: borra el gasto generado, devuelve el monto al saldo y vuelve el cargo a por-confirmar.
+  async desconfirmar(usuarioId: number, recurrenteId: number, mes: string) {
+    const rec = await this.recurrentes.findOne({ where: { id: recurrenteId, usuarioId } });
+    if (!rec) throw new NotFoundException();
+
+    return this.dataSource.transaction(async (manager) => {
+      const cargo = await manager.findOne(CargoRecurrente, { where: { recurrenteId, mes } });
+      if (!cargo || cargo.estado !== 'confirmado') {
+        throw new BadRequestException('Este cargo no está confirmado');
+      }
+      if (cargo.movimientoId) {
+        const mov = await manager.findOne(Movimiento, { where: { id: cargo.movimientoId, usuarioId } });
+        if (mov) {
+          // Era un gasto: al borrarlo, devolver el monto al saldo de la cuenta.
+          await this.ajustarSaldo(manager, usuarioId, mov.cuentaId, parseFloat(mov.monto));
+          await manager.remove(mov);
+        }
+      }
+      cargo.estado = 'por-confirmar';
+      cargo.monto = null;
+      cargo.movimientoId = null;
+      await manager.save(cargo);
+      return { ok: true };
+    });
   }
 
   // Cron: día 1 de cada mes a las 00:05 ART — genera cargos por-confirmar

@@ -55,9 +55,11 @@
           <span class="estado-pill" :class="r.cargoMes?.estado === 'confirmado' ? 'confirmado' : 'pendiente'">
             <span class="dot"></span>{{ r.cargoMes?.estado === 'confirmado' ? 'Confirmado' : 'Por confirmar' }}
           </span>
-          <button v-if="r.cargoMes?.estado !== 'confirmado'" class="btn-confirmar" @click="abrirConfirmar(r)">
-            Confirmar precio
-          </button>
+          <div class="rec-acciones">
+            <button class="btn-link" @click="abrirEditar(r)">Editar</button>
+            <button v-if="r.cargoMes?.estado === 'confirmado'" class="btn-link warn" @click="desconfirmar(r)">Deshacer</button>
+            <button v-else class="btn-confirmar" @click="abrirConfirmar(r)">Confirmar precio</button>
+          </div>
         </div>
       </div>
     </div>
@@ -81,6 +83,38 @@
         </form>
       </div>
     </div>
+
+    <!-- Modal editar recurrente -->
+    <div v-if="modalEditar" class="modal-overlay" @click.self="modalEditar = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Editar recurrente</h2>
+          <button @click="modalEditar = false" class="btn-cerrar">✕</button>
+        </div>
+        <form @submit.prevent="guardarEdicion" style="display:flex;flex-direction:column;gap:14px">
+          <div class="field"><label>Nombre</label><input v-model="formEditar.nombre" required /></div>
+          <div class="field">
+            <label>Categoría</label>
+            <select v-model="formEditar.categoriaId">
+              <option value="">Sin categoría</option>
+              <option v-for="c in categorias" :key="c.id" :value="c.id">{{ c.label }}</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Cuenta</label>
+            <select v-model="formEditar.cuentaId" required>
+              <option v-for="c in cuentasStore.cuentas" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+            </select>
+          </div>
+          <div class="field"><label>Día aproximado</label><input v-model="formEditar.diaAprox" type="number" min="1" max="31" required /></div>
+          <div class="field"><label>Monto estimado</label><input v-model="formEditar.montoEstimado" type="number" min="0" step="0.01" required /></div>
+          <div class="modal-actions">
+            <button type="button" class="btn-eliminar" @click="eliminarRec">Eliminar</button>
+            <button type="submit" class="btn-guardar">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -89,17 +123,25 @@ import { ref, computed, onMounted } from 'vue';
 import { useRecurrentesStore } from '@/stores/recurrentes';
 import { useDolarStore } from '@/stores/dolar';
 import { useMovimientosStore } from '@/stores/movimientos';
+import { useCuentasStore } from '@/stores/cuentas';
+import { http } from '@/lib/http';
 import { ars, usd, mesLabel, mesActual } from '@/lib/format';
 
 const store = useRecurrentesStore();
 const dolar = useDolarStore();
 const movStore = useMovimientosStore();
+const cuentasStore = useCuentasStore();
 const mes = mesActual();
+const categorias = ref<any[]>([]);
 
 const modal = ref(false);
 const confirmandoRec = ref<any>(null);
 const montoConfirmar = ref('');
 const deltaResult = ref<number | null>(null);
+
+const modalEditar = ref(false);
+const editandoRec = ref<any>(null);
+const formEditar = ref({ nombre: '', categoriaId: '' as any, cuentaId: '' as any, diaAprox: '', montoEstimado: '' });
 
 const totalMes = computed(() => store.items.reduce((a, r) => a + parseFloat(r.cargoMes?.monto ?? r.montoEstimado), 0));
 const totalConfirmado = computed(() => store.items.filter(r => r.cargoMes?.estado === 'confirmado').reduce((a, r) => a + parseFloat(r.cargoMes?.monto ?? 0), 0));
@@ -121,10 +163,48 @@ async function confirmar() {
   const res = await store.confirmar(confirmandoRec.value.id, mes, parseFloat(montoConfirmar.value));
   deltaResult.value = res.delta;
   if (res.delta === null) modal.value = false;
+  await Promise.all([movStore.cargarResumen(), cuentasStore.cargar()]);
+}
+
+async function desconfirmar(r: any) {
+  if (!confirm(`¿Deshacer la confirmación de "${r.nombre}"? Se borra el gasto y se devuelve el saldo a la cuenta.`)) return;
+  await store.desconfirmar(r.id, mes);
+  await Promise.all([movStore.cargarResumen(), cuentasStore.cargar()]);
+}
+
+function abrirEditar(r: any) {
+  editandoRec.value = r;
+  formEditar.value = {
+    nombre: r.nombre,
+    categoriaId: r.categoriaId ?? '',
+    cuentaId: r.cuentaId,
+    diaAprox: String(r.diaAprox),
+    montoEstimado: String(parseFloat(r.montoEstimado)),
+  };
+  modalEditar.value = true;
+}
+
+async function guardarEdicion() {
+  await store.actualizar(editandoRec.value.id, {
+    nombre: formEditar.value.nombre,
+    categoriaId: formEditar.value.categoriaId ? +formEditar.value.categoriaId : null,
+    cuentaId: +formEditar.value.cuentaId,
+    diaAprox: +formEditar.value.diaAprox,
+    montoEstimado: String(formEditar.value.montoEstimado),
+  }, mes);
+  modalEditar.value = false;
+}
+
+async function eliminarRec() {
+  if (!confirm(`¿Eliminar el recurrente "${editandoRec.value.nombre}"?`)) return;
+  await store.eliminar(editandoRec.value.id, mes);
+  modalEditar.value = false;
 }
 
 onMounted(async () => {
   dolar.cargar();
+  cuentasStore.cargar();
+  http.get<any[]>('/categorias').then(r => (categorias.value = r));
   await store.cargar(mes);
   await movStore.cargarResumen();
 });
@@ -182,4 +262,10 @@ onMounted(async () => {
 .field input { padding: 10px 12px; border: 1px solid #E6E9EF; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; }
 .delta-info { font-size: 13px; color: #475569; background: #F6F7F9; padding: 10px 12px; border-radius: 10px; }
 .btn-guardar { padding: 12px; background: #4F46E5; color: #fff; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; }
+.rec-acciones { display: flex; align-items: center; gap: 14px; }
+.btn-link { font-size: 11.5px; font-weight: 600; color: #475569; background: none; border: none; cursor: pointer; padding: 0; }
+.btn-link.warn { color: #B45309; }
+.modal-actions { display: flex; gap: 10px; margin-top: 4px; }
+.modal-actions .btn-guardar { flex: 1; }
+.btn-eliminar { padding: 12px 16px; background: #FCE8EC; color: #E11D48; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; }
 </style>

@@ -17,15 +17,25 @@ export const useRecurrentesStore = defineStore('recurrentes', () => {
     return res;
   }
 
+  async function desconfirmar(id: number, mes: string) {
+    await http.post(`/recurrentes/${id}/desconfirmar`, { mes });
+    await cargar(mes);
+  }
+
   async function crear(data: any) {
     await http.post('/recurrentes', data);
     await cargar();
   }
 
-  async function eliminar(id: number) {
-    await http.delete(`/recurrentes/${id}`);
-    await cargar();
+  async function actualizar(id: number, data: any, mes?: string) {
+    await http.patch(`/recurrentes/${id}`, data);
+    await cargar(mes);
   }
 
-  return { items, cargar, confirmar, crear, eliminar };
+  async function eliminar(id: number, mes?: string) {
+    await http.delete(`/recurrentes/${id}`);
+    await cargar(mes);
+  }
+
+  return { items, cargar, confirmar, desconfirmar, crear, actualizar, eliminar };
 });

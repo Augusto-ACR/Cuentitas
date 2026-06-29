@@ -47,6 +47,19 @@
       </div>
     </div>
 
+    <!-- Seguridad: cambiar contraseña -->
+    <div class="section-title" style="margin-top:24px">Seguridad</div>
+    <div class="card">
+      <form @submit.prevent="cambiarPassword" style="display:flex;flex-direction:column;gap:12px">
+        <div class="field"><label>Contraseña actual</label><input v-model="pwd.actual" type="password" required /></div>
+        <div class="field"><label>Nueva contraseña</label><input v-model="pwd.nueva" type="password" minlength="6" required /></div>
+        <div class="field"><label>Repetir nueva contraseña</label><input v-model="pwd.repetir" type="password" required /></div>
+        <div v-if="pwdError" class="form-error">{{ pwdError }}</div>
+        <div v-if="pwdOk" class="form-ok">Contraseña actualizada.</div>
+        <button type="submit" class="btn-pwd">Cambiar contraseña</button>
+      </form>
+    </div>
+
     <!-- Modal nueva categoría -->
     <div v-if="modal" class="modal-overlay" @click.self="modal = false">
       <div class="modal">
@@ -96,6 +109,9 @@ const prefOk = ref(false);
 const modal = ref(false);
 const cats = ref<any[]>([]);
 const formCat = ref({ label: '', color: '#4F46E5', matchesRaw: '' });
+const pwd = ref({ actual: '', nueva: '', repetir: '' });
+const pwdError = ref('');
+const pwdOk = ref(false);
 
 const catsSistema = computed(() => cats.value.filter(c => c.sistema));
 const catsPersonales = computed(() => cats.value.filter(c => !c.sistema));
@@ -106,6 +122,23 @@ async function cambiarPref(val: 'oficial' | 'mep' | 'blue') {
   if (auth.usuario) auth.usuario.dolarPref = val;
   prefOk.value = true;
   setTimeout(() => { prefOk.value = false; }, 2000);
+}
+
+async function cambiarPassword() {
+  pwdError.value = '';
+  pwdOk.value = false;
+  if (pwd.value.nueva !== pwd.value.repetir) {
+    pwdError.value = 'Las contraseñas nuevas no coinciden';
+    return;
+  }
+  try {
+    await http.post('/auth/cambiar-password', { actual: pwd.value.actual, nueva: pwd.value.nueva });
+    pwd.value = { actual: '', nueva: '', repetir: '' };
+    pwdOk.value = true;
+    setTimeout(() => { pwdOk.value = false; }, 3000);
+  } catch (e: any) {
+    pwdError.value = e?.message ?? 'No se pudo cambiar la contraseña';
+  }
 }
 
 function abrirNueva() { formCat.value = { label: '', color: '#4F46E5', matchesRaw: '' }; modal.value = true; }
@@ -171,4 +204,8 @@ onMounted(() => { dolar.cargar(); cargarCats(); });
 .col-swatch { width: 28px; height: 28px; border-radius: 8px; border: 2.5px solid transparent; cursor: pointer; transition: transform 0.15s; }
 .col-swatch.selected { border-color: #0F172A; transform: scale(1.15); }
 .btn-guardar { padding: 12px; background: #4F46E5; color: #fff; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; }
+.field input[type="password"] { padding: 10px 12px; border: 1px solid #E6E9EF; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; }
+.form-error { font-size: 12.5px; color: #E11D48; background: #FCE8EC; padding: 8px 12px; border-radius: 10px; }
+.form-ok { font-size: 12.5px; color: #166534; background: #E7F6EC; padding: 8px 12px; border-radius: 10px; }
+.btn-pwd { padding: 11px; background: #0F172A; color: #fff; border: none; border-radius: 12px; font-weight: 600; font-size: 13.5px; cursor: pointer; margin-top: 2px; }
 </style>

@@ -44,4 +44,10 @@ export class AuthController {
   me(@UsuarioId() id: number) {
     return this.auth.me(id);
   }
+
+  @Post('cambiar-password')
+  @HttpCode(200)
+  cambiarPassword(@UsuarioId() id: number, @Body() body: { actual: string; nueva: string }) {
+    return this.auth.cambiarPassword(id, body.actual, body.nueva);
+  }
 }

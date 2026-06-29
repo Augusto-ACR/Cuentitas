@@ -35,6 +35,15 @@ export class RecurrentesController {
     return this.svc.confirmar(uid, id, body.mes, body.monto);
   }
 
+  @Post(':id/desconfirmar')
+  desconfirmar(
+    @UsuarioId() uid: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { mes: string },
+  ) {
+    return this.svc.desconfirmar(uid, id, body.mes);
+  }
+
   @Post('generar')
   generar(@Query('mes') mes: string) {
     return this.svc.generarManual(mes);
