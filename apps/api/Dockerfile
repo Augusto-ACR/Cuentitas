@@ -2,7 +2,6 @@ FROM node:20-slim AS builder
 WORKDIR /app
 RUN npm install -g pnpm
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc ./
-COPY packages/ packages/
 COPY apps/api/package.json apps/api/
 RUN pnpm install --frozen-lockfile
 COPY apps/api/ apps/api/
@@ -12,7 +11,6 @@ FROM node:20-slim AS runner
 WORKDIR /app
 RUN npm install -g pnpm
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc ./
-COPY packages/ packages/
 COPY apps/api/package.json apps/api/
 RUN pnpm install --frozen-lockfile --prod
 COPY --from=builder /app/apps/api/dist apps/api/dist
