@@ -12,7 +12,10 @@ class LoginDto {
 const COOKIE_OPTS = {
   httpOnly: true,
   sameSite: 'lax' as const,
-  secure: process.env.NODE_ENV === 'production',
+  // Secure solo cuando servimos detrás de un dominio con HTTPS (DOMINIO seteado).
+  // Sin dominio (prueba por http://IP:8080) la cookie no debe ser Secure o el
+  // navegador no la guarda y el login queda en loop.
+  secure: !!process.env.DOMINIO,
   maxAge: 7 * 24 * 60 * 60 * 1000,
   path: '/',
 };
