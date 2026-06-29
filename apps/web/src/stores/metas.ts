@@ -14,8 +14,8 @@ export const useMetasStore = defineStore('metas', () => {
     await cargar();
   }
 
-  async function agregarAporte(metaId: number, montoARS: number, fecha: string) {
-    await http.post(`/metas/${metaId}/aportes`, { montoARS, fecha });
+  async function agregarAporte(metaId: number, montoARS: number, fecha: string, cuentaId: number) {
+    await http.post(`/metas/${metaId}/aportes`, { montoARS, fecha, cuentaId });
     await cargar();
   }
 

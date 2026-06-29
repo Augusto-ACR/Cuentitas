@@ -16,15 +16,4 @@ export class CuentasController {
   patchCuenta(@UsuarioId() uid: number, @Param('id', ParseIntPipe) id: number, @Body() body: any) {
     return this.svc.patchCuenta(uid, id, body);
   }
-
-  @Get('buckets')
-  getBuckets(@UsuarioId() id: number) { return this.svc.getBuckets(id); }
-
-  @Post('buckets')
-  crearBucket(@UsuarioId() id: number, @Body() body: any) { return this.svc.crearBucket(id, body); }
-
-  @Patch('buckets/:id')
-  patchBucket(@UsuarioId() uid: number, @Param('id', ParseIntPipe) id: number, @Body() body: any) {
-    return this.svc.patchBucket(uid, id, body);
-  }
 }

@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Meta } from '../../entities/meta.entity';
 import { MetaParticipante } from '../../entities/meta-participante.entity';
 import { AporteMeta } from '../../entities/aporte-meta.entity';
+import { Cuenta } from '../../entities/cuenta.entity';
 import { DolarService } from '../dolar/dolar.service';
 import { DolarPref } from '../../entities/usuario.entity';
 
@@ -17,6 +18,7 @@ export class MetasService {
     @InjectRepository(MetaParticipante) private readonly participantes: Repository<MetaParticipante>,
     @InjectRepository(AporteMeta) private readonly aportes: Repository<AporteMeta>,
     private readonly dolar: DolarService,
+    private readonly dataSource: DataSource,
   ) {}
 
   // Devuelve SOLO las metas donde el usuario es participante (scoping por participación)
@@ -32,9 +34,15 @@ export class MetasService {
     return metasData;
   }
 
-  async crear(usuarioId: number, data: { titulo: string; objetivoUSD: number; plazoMeses: number; tipo?: 'personal' | 'compartida' }) {
+  async crear(usuarioId: number, data: { titulo: string; objetivoUSD?: number | null; plazoMeses?: number | null; tipo?: 'personal' | 'compartida' }) {
     const meta = await this.metas.save(
-      this.metas.create({ ...data, objetivoUSD: String(data.objetivoUSD), ownerId: usuarioId, tipo: data.tipo ?? 'personal' }),
+      this.metas.create({
+        titulo: data.titulo,
+        objetivoUSD: data.objetivoUSD != null ? String(data.objetivoUSD) : null,
+        plazoMeses: data.plazoMeses != null ? data.plazoMeses : null,
+        ownerId: usuarioId,
+        tipo: data.tipo ?? 'personal',
+      }),
     );
     // Agregar al owner como participante
     await this.participantes.save(
@@ -67,7 +75,7 @@ export class MetasService {
       }, 0);
     };
 
-    const objetivo = parseFloat(meta.objetivoUSD);
+    const objetivo = meta.objetivoUSD != null ? parseFloat(meta.objetivoUSD) : null;
 
     // Aportes visibles: solo los de ESA meta. Los usuarios ven aportes de TODOS los participantes de la meta
     // pero NADA más de los otros usuarios (frontera de privacidad quirúrgica).
@@ -118,23 +126,46 @@ export class MetasService {
     return { ok: true };
   }
 
-  async agregarAporte(usuarioId: number, metaId: number, montoARS: number, fecha: string) {
+  async agregarAporte(usuarioId: number, metaId: number, montoARS: number, fecha: string, cuentaId: number) {
     // Verificar participación
     const part = await this.participantes.findOne({ where: { metaId, usuarioId } });
     if (!part) throw new ForbiddenException();
 
     // Congelar las 3 cotizaciones del día del aporte
     const cotizaciones = await this.dolar.ultimas();
-    const aporte = await this.aportes.save(
-      this.aportes.create({
-        metaId, usuarioId,
-        montoARS: String(montoARS),
-        fecha,
-        valorOficial: cotizaciones.oficial.valor,
-        valorMEP: cotizaciones.mep.valor,
-        valorBlue: cotizaciones.blue.valor,
-      }),
-    );
-    return aporte;
+
+    // Transferencia: registra el ahorro y resta de la cuenta de origen, todo en
+    // una transacción para que la cuenta y el aporte nunca queden descuadrados.
+    return this.dataSource.transaction(async (manager) => {
+      const aporte = await manager.save(
+        manager.create(AporteMeta, {
+          metaId, usuarioId, cuentaId,
+          montoARS: String(montoARS),
+          fecha,
+          valorOficial: cotizaciones.oficial.valor,
+          valorMEP: cotizaciones.mep.valor,
+          valorBlue: cotizaciones.blue.valor,
+        }),
+      );
+      if (cuentaId) {
+        await manager.createQueryBuilder()
+          .update(Cuenta)
+          .set({ saldo: () => 'saldo - :monto' })
+          .where('id = :cuentaId AND usuario_id = :usuarioId', { cuentaId, usuarioId })
+          .setParameter('monto', montoARS)
+          .execute();
+      }
+      return aporte;
+    });
+  }
+
+  // Total ahorrado por el usuario en ARS (suma de SUS aportes a cualquier meta/ahorro).
+  // Respeta el scoping: solo cuenta los aportes hechos por este usuario.
+  async totalAhorrado(usuarioId: number) {
+    const row = await this.aportes.createQueryBuilder('a')
+      .select('COALESCE(SUM(a.monto_ars::numeric), 0)', 'sum')
+      .where('a.usuario_id = :usuarioId', { usuarioId })
+      .getRawOne();
+    return { totalARS: parseFloat(row.sum) || 0 };
   }
 }

@@ -9,8 +9,8 @@
     </header>
 
     <div v-if="!store.items.length" class="empty">
-      <p>No tenés metas todavía.</p>
-      <button class="btn-nuevo" @click="abrirNueva">Crear primera meta</button>
+      <p>No tenés metas ni ahorros todavía.</p>
+      <button class="btn-nuevo" @click="abrirNueva">Crear el primero</button>
     </div>
 
     <div v-for="meta in store.items" :key="meta.id" class="meta-card" :class="meta.tipo === 'compartida' ? 'compartida' : ''">
@@ -21,12 +21,14 @@
         </div>
         <div>
           <div class="meta-titulo">{{ meta.titulo }}</div>
-          <div class="meta-sub">Objetivo {{ usd(meta.objetivoUSD) }} · {{ meta.plazoMeses }} meses</div>
+          <div class="meta-sub" v-if="tieneObjetivo(meta)">Objetivo {{ usd(meta.objetivo) }} · {{ meta.plazoMeses }} meses</div>
+          <div class="meta-sub" v-else>Ahorro libre · sin objetivo fijo</div>
         </div>
         <div class="meta-tipo-badge" v-if="meta.tipo === 'compartida'">Compartida</div>
       </div>
 
-      <div class="meta-progress">
+      <!-- Con objetivo: progreso completo -->
+      <div class="meta-progress" v-if="tieneObjetivo(meta)">
         <div class="meta-row">
           <div>
             <div class="meta-val-label">Llevás ahorrado</div>
@@ -34,19 +36,26 @@
           </div>
           <div style="text-align:right">
             <div class="meta-val-label">Te falta</div>
-            <div class="meta-val teal">{{ usd(Math.max(0, parseFloat(meta.objetivoUSD) - progresoUsd(meta))) }}</div>
+            <div class="meta-val teal">{{ usd(Math.max(0, meta.objetivo - progresoUsd(meta))) }}</div>
           </div>
         </div>
         <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: Math.min(100, (progresoUsd(meta) / parseFloat(meta.objetivoUSD)) * 100) + '%' }"></div>
+          <div class="progress-fill" :style="{ width: Math.min(100, (progresoUsd(meta) / meta.objetivo) * 100) + '%' }"></div>
         </div>
-        <div class="meta-pct">{{ ((progresoUsd(meta) / parseFloat(meta.objetivoUSD)) * 100).toFixed(1) }}% del objetivo</div>
+        <div class="meta-pct">{{ ((progresoUsd(meta) / meta.objetivo) * 100).toFixed(1) }}% del objetivo · {{ ars(totalARS(meta)) }} aportados</div>
       </div>
 
-      <!-- Aporte sugerido -->
-      <div class="aporte-sugerido" v-if="parseFloat(meta.objetivoUSD) > progresoUsd(meta)">
+      <!-- Sin objetivo: solo acumulado -->
+      <div class="meta-progress" v-else>
+        <div class="meta-val-label">Llevás ahorrado</div>
+        <div class="meta-val">{{ usd(progresoUsd(meta)) }}</div>
+        <div class="meta-pct">{{ ars(totalARS(meta)) }} aportados</div>
+      </div>
+
+      <!-- Aporte sugerido (solo con objetivo y plazo) -->
+      <div class="aporte-sugerido" v-if="tieneObjetivo(meta) && meta.objetivo > progresoUsd(meta) && meta.plazoMeses">
         <div class="as-title">Aporte sugerido</div>
-        <div class="as-body">Para llegar en {{ meta.plazoMeses }} meses, guardá <strong>{{ usd((parseFloat(meta.objetivoUSD) - progresoUsd(meta)) / meta.plazoMeses) }}</strong> por mes.</div>
+        <div class="as-body">Para llegar en {{ meta.plazoMeses }} meses, guardá <strong>{{ usd((meta.objetivo - progresoUsd(meta)) / meta.plazoMeses) }}</strong> por mes.</div>
       </div>
 
       <!-- Aportes -->
@@ -68,21 +77,29 @@
       <!-- Participantes (compartida) -->
       <div v-if="meta.tipo === 'compartida' && meta.participantes?.length" class="participantes">
         <span v-for="p in meta.participantes" :key="p.id" class="part-chip">{{ p.usuario?.nombre ?? p.usuarioId }}</span>
-        <button v-if="esOwner(meta)" class="btn-add-part" @click="abrirAgregarPart(meta)">+ Agregar</button>
       </div>
     </div>
 
-    <!-- Modal nueva meta -->
+    <!-- Modal nueva meta/ahorro -->
     <div v-if="modalNueva" class="modal-overlay" @click.self="modalNueva = false">
       <div class="modal">
         <div class="modal-header">
-          <h2>Nueva meta</h2>
+          <h2>Nueva meta o ahorro</h2>
           <button @click="modalNueva = false" class="btn-cerrar">✕</button>
         </div>
         <form @submit.prevent="crearMeta" style="display:flex;flex-direction:column;gap:14px">
-          <div class="field"><label>Título</label><input v-model="formMeta.titulo" required /></div>
-          <div class="field"><label>Objetivo (USD)</label><input v-model="formMeta.objetivoUSD" type="number" min="1" required /></div>
-          <div class="field"><label>Plazo (meses)</label><input v-model="formMeta.plazoMeses" type="number" min="1" required /></div>
+          <div class="field"><label>Título</label><input v-model="formMeta.titulo" required placeholder="Ej: Viaje, Notebook, Emergencias" /></div>
+
+          <label class="check-row">
+            <input type="checkbox" v-model="formMeta.sinObjetivo" />
+            <span>Es un ahorro libre (sin objetivo fijo)</span>
+          </label>
+
+          <template v-if="!formMeta.sinObjetivo">
+            <div class="field"><label>Objetivo (USD)</label><input v-model="formMeta.objetivoUSD" type="number" min="1" required /></div>
+            <div class="field"><label>Plazo (meses)</label><input v-model="formMeta.plazoMeses" type="number" min="1" required /></div>
+          </template>
+
           <div class="field">
             <label>Tipo</label>
             <select v-model="formMeta.tipo">
@@ -90,7 +107,7 @@
               <option value="compartida">Compartida</option>
             </select>
           </div>
-          <button type="submit" class="btn-guardar">Crear meta</button>
+          <button type="submit" class="btn-guardar">Crear</button>
         </form>
       </div>
     </div>
@@ -104,6 +121,13 @@
         </div>
         <form @submit.prevent="agregarAporte" style="display:flex;flex-direction:column;gap:14px">
           <div class="field"><label>Monto (ARS)</label><input v-model="formAporte.montoARS" type="number" min="1" required /></div>
+          <div class="field">
+            <label>Sale de la cuenta</label>
+            <select v-model="formAporte.cuentaId" required>
+              <option v-for="c in cuentasStore.cuentas" :key="c.id" :value="String(c.id)">{{ c.nombre }} — {{ ars(c.saldo) }}</option>
+            </select>
+            <span class="field-hint">El monto se descuenta de esta cuenta.</span>
+          </div>
           <div class="field"><label>Fecha</label><input v-model="formAporte.fecha" type="date" required /></div>
           <button type="submit" class="btn-guardar">Registrar</button>
         </form>
@@ -117,42 +141,67 @@ import { ref, onMounted } from 'vue';
 import { useMetasStore } from '@/stores/metas';
 import { useDolarStore } from '@/stores/dolar';
 import { useAuthStore } from '@/stores/auth';
+import { useCuentasStore } from '@/stores/cuentas';
 import { ars, usd, fecha } from '@/lib/format';
 
 const store = useMetasStore();
 const dolar = useDolarStore();
 const auth = useAuthStore();
+const cuentasStore = useCuentasStore();
 
 const modalNueva = ref(false);
 const modalAporte = ref(false);
 const aportandoMeta = ref<any>(null);
-const formMeta = ref({ titulo: '', objetivoUSD: '', plazoMeses: '', tipo: 'personal' });
-const formAporte = ref({ montoARS: '', fecha: new Date().toISOString().split('T')[0] });
+const formMeta = ref({ titulo: '', objetivoUSD: '', plazoMeses: '', tipo: 'personal', sinObjetivo: false });
+const hoy = () => new Date().toISOString().split('T')[0];
+const formAporte = ref({ montoARS: '', fecha: hoy(), cuentaId: '' });
+
+function tieneObjetivo(meta: any): boolean {
+  return meta.objetivo != null;
+}
 
 function progresoUsd(meta: any): number {
   const pref = auth.usuario?.dolarPref ?? 'blue';
   return meta.progreso?.[pref] ?? 0;
 }
 
-function esOwner(meta: any): boolean {
-  return meta.participantes?.some((p: any) => p.usuarioId === auth.usuario?.id && p.rol === 'owner');
+function totalARS(meta: any): number {
+  return (meta.aportes ?? []).reduce((a: number, x: any) => a + parseFloat(x.montoARS), 0);
 }
 
-function abrirNueva() { formMeta.value = { titulo: '', objetivoUSD: '', plazoMeses: '', tipo: 'personal' }; modalNueva.value = true; }
-function abrirAporte(meta: any) { aportandoMeta.value = meta; formAporte.value = { montoARS: '', fecha: new Date().toISOString().split('T')[0] }; modalAporte.value = true; }
-function abrirAgregarPart(meta: any) { /* TODO: modal para agregar participante */ }
+function abrirNueva() {
+  formMeta.value = { titulo: '', objetivoUSD: '', plazoMeses: '', tipo: 'personal', sinObjetivo: false };
+  modalNueva.value = true;
+}
+
+function abrirAporte(meta: any) {
+  aportandoMeta.value = meta;
+  formAporte.value = { montoARS: '', fecha: hoy(), cuentaId: String(cuentasStore.cuentas[0]?.id ?? '') };
+  modalAporte.value = true;
+}
 
 async function crearMeta() {
-  await store.crear({ ...formMeta.value, objetivoUSD: parseFloat(formMeta.value.objetivoUSD), plazoMeses: parseInt(formMeta.value.plazoMeses) });
+  const payload: any = { titulo: formMeta.value.titulo, tipo: formMeta.value.tipo };
+  if (!formMeta.value.sinObjetivo) {
+    payload.objetivoUSD = parseFloat(formMeta.value.objetivoUSD);
+    payload.plazoMeses = parseInt(formMeta.value.plazoMeses);
+  }
+  await store.crear(payload);
   modalNueva.value = false;
 }
 
 async function agregarAporte() {
-  await store.agregarAporte(aportandoMeta.value.id, parseFloat(formAporte.value.montoARS), formAporte.value.fecha);
+  await store.agregarAporte(
+    aportandoMeta.value.id,
+    parseFloat(formAporte.value.montoARS),
+    formAporte.value.fecha,
+    parseInt(formAporte.value.cuentaId),
+  );
   modalAporte.value = false;
+  await cuentasStore.cargar();
 }
 
-onMounted(() => { store.cargar(); dolar.cargar(); });
+onMounted(() => { store.cargar(); dolar.cargar(); cuentasStore.cargar(); });
 </script>
 
 <style scoped>
@@ -185,7 +234,7 @@ onMounted(() => { store.cargar(); dolar.cargar(); });
 .meta-card.compartida .progress-bar { background: rgba(255,255,255,.22); }
 .progress-fill { height: 100%; background: #0D9488; border-radius: 999px; transition: width 0.5s; }
 .meta-card.compartida .progress-fill { background: #fff; }
-.meta-pct { font-size: 11px; color: #94A3B8; font-family: 'JetBrains Mono', monospace; }
+.meta-pct { font-size: 11px; color: #94A3B8; font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
 .meta-card.compartida .meta-pct { color: #A7F3D0; }
 
 .aporte-sugerido { background: #EEF0FE; border: 1px solid #E0E3FB; border-radius: 13px; padding: 12px 14px; margin-top: 14px; }
@@ -207,12 +256,12 @@ onMounted(() => { store.cargar(); dolar.cargar(); });
 .aporte-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
 .aporte-fecha { font-family: 'JetBrains Mono', monospace; color: #94A3B8; }
 .aporte-usuario { flex: 1; color: #475569; }
+.meta-card.compartida .aporte-usuario { color: #D1FAE5; }
 .aporte-monto { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #0F172A; }
 .meta-card.compartida .aporte-monto { color: #fff; }
 
 .participantes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.2); }
 .part-chip { background: rgba(255,255,255,.2); color: #fff; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; }
-.btn-add-part { font-size: 12px; color: #A7F3D0; background: none; border: 1px dashed rgba(255,255,255,.4); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.4); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
 .modal { background: #fff; border-radius: 20px 20px 0 0; padding: 24px 20px 32px; width: 100%; max-width: 480px; }
@@ -222,5 +271,8 @@ onMounted(() => { store.cargar(); dolar.cargar(); });
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: 12.5px; font-weight: 500; color: #475569; }
 .field input, .field select { padding: 10px 12px; border: 1px solid #E6E9EF; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; }
+.field-hint { font-size: 11px; color: #94A3B8; }
+.check-row { display: flex; align-items: center; gap: 9px; font-size: 13px; color: #0F172A; cursor: pointer; }
+.check-row input { width: 17px; height: 17px; accent-color: #4F46E5; }
 .btn-guardar { padding: 12px; background: #4F46E5; color: #fff; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; }
 </style>

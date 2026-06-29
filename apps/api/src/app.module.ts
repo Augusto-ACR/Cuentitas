@@ -23,7 +23,6 @@ import { HealthController } from './modules/health/health.controller';
 import { Usuario } from './entities/usuario.entity';
 import { Categoria } from './entities/categoria.entity';
 import { Cuenta } from './entities/cuenta.entity';
-import { Bucket } from './entities/bucket.entity';
 import { Movimiento } from './entities/movimiento.entity';
 import { Recurrente } from './entities/recurrente.entity';
 import { CargoRecurrente } from './entities/cargo-recurrente.entity';
@@ -39,7 +38,7 @@ import { CotizacionDolar } from './entities/cotizacion-dolar.entity';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       entities: [
-        Usuario, Categoria, Cuenta, Bucket, Movimiento,
+        Usuario, Categoria, Cuenta, Movimiento,
         Recurrente, CargoRecurrente, Meta, MetaParticipante,
         AporteMeta, CotizacionDolar,
       ],

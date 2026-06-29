@@ -3,7 +3,6 @@ import { DataSource } from 'typeorm';
 import { Usuario } from './entities/usuario.entity';
 import { Categoria } from './entities/categoria.entity';
 import { Cuenta } from './entities/cuenta.entity';
-import { Bucket } from './entities/bucket.entity';
 import { Movimiento } from './entities/movimiento.entity';
 import { Recurrente } from './entities/recurrente.entity';
 import { CargoRecurrente } from './entities/cargo-recurrente.entity';
@@ -16,7 +15,7 @@ export const AppDataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
   entities: [
-    Usuario, Categoria, Cuenta, Bucket, Movimiento,
+    Usuario, Categoria, Cuenta, Movimiento,
     Recurrente, CargoRecurrente, Meta, MetaParticipante,
     AporteMeta, CotizacionDolar,
   ],

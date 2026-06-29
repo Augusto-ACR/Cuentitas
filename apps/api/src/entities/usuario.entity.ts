@@ -1,7 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
 import { Movimiento } from './movimiento.entity';
 import { Cuenta } from './cuenta.entity';
-import { Bucket } from './bucket.entity';
 import { Recurrente } from './recurrente.entity';
 import { Meta } from './meta.entity';
 import { MetaParticipante } from './meta-participante.entity';
@@ -39,9 +38,6 @@ export class Usuario {
 
   @OneToMany(() => Cuenta, c => c.usuario)
   cuentas: Cuenta[];
-
-  @OneToMany(() => Bucket, b => b.usuario)
-  buckets: Bucket[];
 
   @OneToMany(() => Recurrente, r => r.usuario)
   recurrentes: Recurrente[];

@@ -9,6 +9,10 @@ export class MetasController {
   @Get()
   listar(@UsuarioId() uid: number) { return this.svc.listar(uid); }
 
+  // Importante: ruta estática antes de la paramétrica @Get(':id') para que no la capture.
+  @Get('total-ahorrado')
+  totalAhorrado(@UsuarioId() uid: number) { return this.svc.totalAhorrado(uid); }
+
   @Post()
   crear(@UsuarioId() uid: number, @Body() body: any) { return this.svc.crear(uid, body); }
 
@@ -49,8 +53,8 @@ export class MetasController {
   agregarAporte(
     @UsuarioId() uid: number,
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { montoARS: number; fecha: string },
+    @Body() body: { montoARS: number; fecha: string; cuentaId: number },
   ) {
-    return this.svc.agregarAporte(uid, id, body.montoARS, body.fecha);
+    return this.svc.agregarAporte(uid, id, body.montoARS, body.fecha, body.cuentaId);
   }
 }

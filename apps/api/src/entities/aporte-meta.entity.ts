@@ -13,6 +13,11 @@ export class AporteMeta {
   @Column({ name: 'usuario_id' })
   usuarioId: number;
 
+  // Cuenta de la que salió la plata del aporte (transferencia). Nullable por
+  // compatibilidad con aportes viejos previos a la unificación de ahorros.
+  @Column({ name: 'cuenta_id', nullable: true })
+  cuentaId: number | null;
+
   @Column({ name: 'monto_ars', type: 'numeric', precision: 14, scale: 2 })
   montoARS: string;
 

@@ -5,7 +5,7 @@
         <div class="page-sub">Cuentitas</div>
         <h1 class="page-title">Cuentas</h1>
       </div>
-      <div class="avatar">{{ auth.usuario?.nombre?.[0] }}</div>
+      <div class="avatar" @click="irPerfil" role="button" tabindex="0">{{ auth.usuario?.nombre?.[0] }}</div>
     </header>
 
     <!-- Patrimonio total -->
@@ -39,33 +39,29 @@
         </div>
         <div class="cuenta-right">
           <div class="cuenta-saldo">{{ ars(c.saldo) }}</div>
-          <button class="btn-editar" @click="abrirEditar(c, 'cuenta')">Editar saldo</button>
+          <button class="btn-editar" @click="abrirEditar(c)">Editar saldo</button>
         </div>
       </div>
     </div>
 
-    <!-- Ahorros -->
+    <!-- Ahorros (unificados en Metas) -->
     <div class="section-header" style="margin-top: 20px">
       <span class="section-title">Ahorros</span>
       <span class="section-total teal">{{ ars(store.totalAhorros) }}</span>
     </div>
-    <div class="bucket-grid">
-      <div v-for="b in store.buckets" :key="b.id" class="bucket-card" @click="abrirEditar(b, 'bucket')">
-        <div class="bucket-top">
-          <span class="bucket-dot"></span>
-          <span class="bucket-nombre">{{ b.nombre }}</span>
-        </div>
-        <div class="bucket-monto" :class="parseFloat(b.monto) > 0 ? '' : 'muted'">{{ ars(b.monto) }}</div>
-        <div v-if="parseFloat(b.monto) === 0" class="bucket-empty">sin fondos</div>
-        <div v-else class="bucket-usd">{{ usd(parseFloat(b.monto) / dolar.valorPreferido) }}</div>
+    <RouterLink to="/metas" class="ahorros-card">
+      <div>
+        <div class="ahorros-title">Tus ahorros viven en Metas</div>
+        <div class="ahorros-sub">Lo que aportás a una meta sale de tu cuenta y suma acá.</div>
       </div>
-    </div>
+      <span class="ahorros-arrow">→</span>
+    </RouterLink>
 
-    <!-- Modal editar saldo -->
+    <!-- Modal editar saldo de cuenta -->
     <div v-if="modal" class="modal-overlay" @click.self="modal = false">
       <div class="modal">
         <div class="modal-header">
-          <h2>Editar {{ editandoTipo === 'cuenta' ? 'saldo' : 'monto' }}</h2>
+          <h2>Editar saldo</h2>
           <button @click="modal = false" class="btn-cerrar">✕</button>
         </div>
         <form @submit.prevent="guardar" style="display:flex;flex-direction:column;gap:14px">
@@ -82,6 +78,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { RouterLink, useRouter } from 'vue-router';
 import { useCuentasStore } from '@/stores/cuentas';
 import { useDolarStore } from '@/stores/dolar';
 import { useAuthStore } from '@/stores/auth';
@@ -90,26 +87,23 @@ import { ars, usd } from '@/lib/format';
 const store = useCuentasStore();
 const dolar = useDolarStore();
 const auth = useAuthStore();
+const router = useRouter();
 const modal = ref(false);
 const editandoItem = ref<any>(null);
-const editandoTipo = ref<'cuenta' | 'bucket'>('cuenta');
 const nuevoMonto = ref('');
 
 const prefLabel = computed(() => ({ oficial: 'Oficial', mep: 'MEP', blue: 'Blue' }[auth.usuario?.dolarPref ?? 'blue'] ?? 'Blue'));
 
-function abrirEditar(item: any, tipo: 'cuenta' | 'bucket') {
+function irPerfil() { router.push(auth.usuario?.rol === 'admin' ? '/admin' : '/ajustes'); }
+
+function abrirEditar(item: any) {
   editandoItem.value = item;
-  editandoTipo.value = tipo;
-  nuevoMonto.value = String(parseFloat(tipo === 'cuenta' ? item.saldo : item.monto));
+  nuevoMonto.value = String(parseFloat(item.saldo));
   modal.value = true;
 }
 
 async function guardar() {
-  if (editandoTipo.value === 'cuenta') {
-    await store.patchCuenta(editandoItem.value.id, { saldo: nuevoMonto.value });
-  } else {
-    await store.patchBucket(editandoItem.value.id, { monto: nuevoMonto.value });
-  }
+  await store.patchCuenta(editandoItem.value.id, { saldo: nuevoMonto.value });
   modal.value = false;
 }
 
@@ -121,7 +115,7 @@ onMounted(() => { store.cargar(); dolar.cargar(); });
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .page-sub { font-size: 11px; color: #94A3B8; }
 .page-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 22px; color: #0F172A; }
-.avatar { width: 38px; height: 38px; border-radius: 50%; background: #EEF0FE; color: #4F46E5; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; font-family: 'Space Grotesk', sans-serif; }
+.avatar { width: 38px; height: 38px; border-radius: 50%; background: #EEF0FE; color: #4F46E5; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; font-family: 'Space Grotesk', sans-serif; cursor: pointer; }
 
 .patrimonio-card { background: #0F172A; border-radius: 18px; padding: 18px; margin-bottom: 20px; color: #fff; }
 .pat-label { font-size: 11.5px; color: #94A3B8; }
@@ -148,15 +142,10 @@ onMounted(() => { store.cargar(); dolar.cargar(); });
 .cuenta-saldo { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: #0F172A; }
 .btn-editar { font-size: 10.5px; color: #4F46E5; font-weight: 600; background: none; border: none; cursor: pointer; margin-top: 2px; padding: 0; }
 
-.bucket-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.bucket-card { background: #fff; border: 1px solid #E6E9EF; border-radius: 16px; padding: 14px; cursor: pointer; }
-.bucket-top { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
-.bucket-dot { width: 9px; height: 9px; border-radius: 3px; background: #0D9488; }
-.bucket-nombre { font-size: 12px; font-weight: 600; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bucket-monto { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; color: #0F172A; }
-.bucket-monto.muted { color: #CBD5E1; }
-.bucket-empty { font-size: 10px; color: #CBD5E1; font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
-.bucket-usd { font-size: 10px; color: #94A3B8; font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+.ahorros-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid #E6E9EF; border-radius: 16px; padding: 16px; text-decoration: none; }
+.ahorros-title { font-size: 13px; font-weight: 600; color: #0F172A; }
+.ahorros-sub { font-size: 11.5px; color: #94A3B8; margin-top: 3px; line-height: 1.4; }
+.ahorros-arrow { font-size: 18px; color: #0D9488; flex: none; }
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.4); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
 .modal { background: #fff; border-radius: 20px 20px 0 0; padding: 24px 20px 32px; width: 100%; max-width: 480px; }

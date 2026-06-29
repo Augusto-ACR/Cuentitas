@@ -17,11 +17,12 @@ export class Meta {
   @Column({ length: 150 })
   titulo: string;
 
-  @Column({ name: 'objetivo_usd', type: 'numeric', precision: 14, scale: 2 })
-  objetivoUSD: string;
+  // Opcionales: una meta sin objetivo/plazo es un "ahorro" abierto (sin meta fija).
+  @Column({ name: 'objetivo_usd', type: 'numeric', precision: 14, scale: 2, nullable: true })
+  objetivoUSD: string | null;
 
-  @Column({ name: 'plazo_meses' })
-  plazoMeses: number;
+  @Column({ name: 'plazo_meses', nullable: true })
+  plazoMeses: number | null;
 
   @Column({ type: 'varchar', default: 'personal' })
   tipo: TipoMeta;

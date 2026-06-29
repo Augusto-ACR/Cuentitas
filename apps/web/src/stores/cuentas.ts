@@ -4,13 +4,16 @@ import { http } from '@/lib/http';
 
 export const useCuentasStore = defineStore('cuentas', () => {
   const cuentas = ref<any[]>([]);
-  const buckets = ref<any[]>([]);
+  // Total ahorrado (suma de aportes a metas/ahorros), en ARS. Viene del backend.
+  const totalAhorros = ref(0);
 
   async function cargar() {
-    [cuentas.value, buckets.value] = await Promise.all([
+    const [cs, ahorro] = await Promise.all([
       http.get<any[]>('/cuentas'),
-      http.get<any[]>('/buckets'),
+      http.get<{ totalARS: number }>('/metas/total-ahorrado'),
     ]);
+    cuentas.value = cs;
+    totalAhorros.value = ahorro.totalARS ?? 0;
   }
 
   async function patchCuenta(id: number, data: any) {
@@ -18,18 +21,9 @@ export const useCuentasStore = defineStore('cuentas', () => {
     await cargar();
   }
 
-  async function patchBucket(id: number, data: any) {
-    await http.patch(`/buckets/${id}`, data);
-    await cargar();
-  }
-
   const totalBancos = computed(() =>
     cuentas.value.reduce((a, c) => a + parseFloat(c.saldo ?? 0), 0),
   );
 
-  const totalAhorros = computed(() =>
-    buckets.value.reduce((a, b) => a + parseFloat(b.monto ?? 0), 0),
-  );
-
-  return { cuentas, buckets, cargar, patchCuenta, patchBucket, totalBancos, totalAhorros };
+  return { cuentas, totalAhorros, cargar, patchCuenta, totalBancos };
 });

@@ -14,7 +14,6 @@ import * as bcrypt from 'bcrypt';
 import { Usuario } from './entities/usuario.entity';
 import { Categoria } from './entities/categoria.entity';
 import { Cuenta } from './entities/cuenta.entity';
-import { Bucket } from './entities/bucket.entity';
 import { Recurrente } from './entities/recurrente.entity';
 import { CargoRecurrente } from './entities/cargo-recurrente.entity';
 import { Movimiento } from './entities/movimiento.entity';
@@ -26,7 +25,7 @@ import { CotizacionDolar } from './entities/cotizacion-dolar.entity';
 const ds = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
-  entities: [Usuario, Categoria, Cuenta, Bucket, Recurrente, CargoRecurrente, Movimiento, Meta, MetaParticipante, AporteMeta, CotizacionDolar],
+  entities: [Usuario, Categoria, Cuenta, Recurrente, CargoRecurrente, Movimiento, Meta, MetaParticipante, AporteMeta, CotizacionDolar],
   synchronize: false,
 });
 
@@ -53,13 +52,6 @@ const CUENTAS = [
   { nombre: 'Galicia',      saldo: '43701.10',  icono: 'wallet' },
   { nombre: 'Mercado Pago', saldo: '3519.22',   icono: 'wallet' },
   { nombre: 'Claro pay',    saldo: '4397.22',   icono: 'wallet' },
-];
-
-const BUCKETS = [
-  { nombre: 'Frascos Naranja X',    monto: '0' },
-  { nombre: 'Reservas Mercado Pago', monto: '0' },
-  { nombre: 'Cocos',                monto: '0' },
-  { nombre: 'Plazo fijo',           monto: '0' },
 ];
 
 // Movimientos reales junio 2026
@@ -128,7 +120,6 @@ async function run() {
   const usuariosRepo = ds.getRepository(Usuario);
   const catRepo = ds.getRepository(Categoria);
   const cuentaRepo = ds.getRepository(Cuenta);
-  const bucketRepo = ds.getRepository(Bucket);
   const recRepo = ds.getRepository(Recurrente);
   const cargoRepo = ds.getRepository(CargoRecurrente);
   const movRepo = ds.getRepository(Movimiento);
@@ -168,12 +159,7 @@ async function run() {
   }
   console.log('Cuentas OK');
 
-  // 4. Buckets
-  for (const b of BUCKETS) {
-    const existe = await bucketRepo.findOne({ where: { usuarioId: uid, nombre: b.nombre } });
-    if (!existe) await bucketRepo.save(bucketRepo.create({ usuarioId: uid, ...b }));
-  }
-  console.log('Buckets OK');
+  // (Los buckets se eliminaron: los ahorros ahora se llevan como Metas)
 
   // Mapa de categorías por slug
   const cats = await catRepo.find();

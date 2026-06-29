@@ -3,10 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CuentasController } from './cuentas.controller';
 import { CuentasService } from './cuentas.service';
 import { Cuenta } from '../../entities/cuenta.entity';
-import { Bucket } from '../../entities/bucket.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cuenta, Bucket])],
+  imports: [TypeOrmModule.forFeature([Cuenta])],
   controllers: [CuentasController],
   providers: [CuentasService],
   exports: [CuentasService],
