@@ -32,7 +32,7 @@
         <span v-html="item.icon"></span>
         <span class="bn-label">{{ item.label }}</span>
       </RouterLink>
-      <button class="bn-fab" @click="$emit('nuevo-movimiento')">
+      <button class="bn-fab" aria-label="Nuevo movimiento" @click="router.push('/movimientos?nuevo=1')">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg>
       </button>
     </nav>
@@ -41,13 +41,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { RouterLink, RouterView } from 'vue-router';
+import { RouterLink, RouterView, useRouter } from 'vue-router';
 import { useDolarStore } from '@/stores/dolar';
 import { useAuthStore } from '@/stores/auth';
 import { ars } from '@/lib/format';
 
 const dolar = useDolarStore();
 const auth = useAuthStore();
+const router = useRouter();
 
 onMounted(() => dolar.cargar());
 

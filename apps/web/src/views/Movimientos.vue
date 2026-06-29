@@ -116,7 +116,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useMovimientosStore } from '@/stores/movimientos';
 import { useCuentasStore } from '@/stores/cuentas';
 import { http } from '@/lib/http';
@@ -129,6 +130,8 @@ const filtroTipo = ref('');
 const modal = ref(false);
 const editando = ref<any>(null);
 const error = ref('');
+const route = useRoute();
+const router = useRouter();
 
 const form = ref({ tipo: 'gasto', descripcion: '', monto: '', fecha: new Date().toISOString().split('T')[0], categoriaId: '', cuentaId: '' });
 
@@ -199,6 +202,16 @@ async function eliminar() {
   await Promise.all([store.cargarResumen(), cuentasStore.cargar()]);
 }
 
+// El FAB de mobile llega a /movimientos?nuevo=1 → abrimos el modal y limpiamos la query.
+function checkNuevo() {
+  if (route.query.nuevo === '1') {
+    abrirNuevo();
+    router.replace({ query: {} });
+  }
+}
+
+watch(() => route.query.nuevo, () => checkNuevo());
+
 onMounted(async () => {
   await Promise.all([
     store.cargar(),
@@ -206,6 +219,7 @@ onMounted(async () => {
     cuentasStore.cargar(),
     http.get<any[]>('/categorias').then(r => categorias.value = r),
   ]);
+  checkNuevo();
 });
 </script>
 
