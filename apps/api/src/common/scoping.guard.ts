@@ -8,6 +8,13 @@ import { Request } from 'express';
 export const SKIP_AUTH = 'skipAuth';
 export const ADMIN_ONLY = 'adminOnly';
 
+// Saca el JWT del header "Authorization: Bearer <token>" si está presente.
+function extractBearer(req: Request): string | undefined {
+  const auth = req.headers?.authorization;
+  if (auth?.startsWith('Bearer ')) return auth.slice(7).trim();
+  return undefined;
+}
+
 // El guard extrae usuarioId del JWT y lo inyecta en request.
 // TODAS las rutas privadas pasan por acá: es el único lugar donde
 // se establece la identidad del usuario para las queries de scoping.
@@ -25,7 +32,9 @@ export class ScopingGuard implements CanActivate {
     if (skip) return true;
 
     const req = ctx.switchToHttp().getRequest<Request & { usuarioId: number; usuarioRol: string }>();
-    const token = req.cookies?.token;
+    // La web manda el JWT en cookie httpOnly; los clientes no-navegador (app móvil) lo
+    // mandan en el header Authorization: Bearer. Se aceptan ambos.
+    const token = req.cookies?.token ?? extractBearer(req);
     if (!token) throw new UnauthorizedException('No autenticado');
 
     try {

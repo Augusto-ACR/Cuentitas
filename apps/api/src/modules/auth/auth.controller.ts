@@ -29,8 +29,10 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const { token, usuario } = await this.auth.login(dto.username, dto.password);
+    // La web usa la cookie httpOnly (ignora el token del body). Los clientes que no son
+    // navegador (app móvil) guardan este `token` y lo mandan como Authorization: Bearer.
     res.cookie('token', token, COOKIE_OPTS);
-    return { usuario };
+    return { usuario, token };
   }
 
   @Post('logout')

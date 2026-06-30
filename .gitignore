@@ -7,3 +7,7 @@ backups/
 *.sql.gz
 apps/api/uploads/
 coverage/
+
+# Documento de contexto interno (radiografía del producto para planificar app/bot).
+# No se versiona: es una foto de trabajo, no fuente de verdad.
+CONTEXTO-PRODUCTO.md
