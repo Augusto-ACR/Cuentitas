@@ -1,18 +1,18 @@
 <template>
   <div class="shell">
     <!-- Sidebar desktop -->
-    <aside class="sidebar">
-      <div class="sidebar-logo">
-        <div class="logo-icon">C</div>
-        <span class="logo-text">Cuentitas</span>
-      </div>
+    <aside class="sidebar" :class="{ 'sidebar--mini': colapsado }">
+      <button class="sidebar-logo" @click="toggleSidebar" :title="colapsado ? 'Expandir menú' : 'Contraer menú'">
+        <img v-if="colapsado" :src="logoMark" class="logo-mark-img" alt="Cuentitas" />
+        <img v-else :src="logoFull" class="logo-full-img" alt="Cuentitas" />
+      </button>
       <nav class="sidebar-nav">
-        <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="nav-item" active-class="nav-item--active">
+        <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="nav-item" active-class="nav-item--active" :title="item.label">
           <span class="nav-icon" v-html="item.icon"></span>
-          {{ item.label }}
+          <span class="nav-label">{{ item.label }}</span>
         </RouterLink>
       </nav>
-      <div class="sidebar-dollar" v-if="dolar.cotizacionPreferida">
+      <div class="sidebar-dollar" v-if="dolar.cotizacionPreferida && !colapsado">
         <div class="dollar-dot"></div>
         <div>
           <div class="dollar-label">Dólar {{ prefLabel }}</div>
@@ -40,15 +40,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink, RouterView, useRouter } from 'vue-router';
 import { useDolarStore } from '@/stores/dolar';
 import { useAuthStore } from '@/stores/auth';
 import { ars } from '@/lib/format';
+import logoFull from '@/assets/logo-full.png';
+import logoMark from '@/assets/logo-mark.png';
 
 const dolar = useDolarStore();
 const auth = useAuthStore();
 const router = useRouter();
+
+// Sidebar colapsable: se togglea tocando el logo y se recuerda en localStorage.
+const colapsado = ref(localStorage.getItem('sidebar_colapsado') === '1');
+function toggleSidebar() {
+  colapsado.value = !colapsado.value;
+  localStorage.setItem('sidebar_colapsado', colapsado.value ? '1' : '0');
+}
 
 onMounted(() => dolar.cargar());
 
@@ -109,37 +118,30 @@ const bottomNavItems = [
   position: sticky;
   top: 0;
   height: 100vh;
+  transition: width 0.18s ease;
 }
+
+/* Sidebar colapsada (solo el ícono) */
+.sidebar--mini { width: 76px; padding-left: 12px; padding-right: 12px; }
+.sidebar--mini .sidebar-logo { justify-content: center; padding-left: 0; padding-right: 0; }
+.sidebar--mini .nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
+.sidebar--mini .nav-label { display: none; }
 
 .sidebar-logo {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 0 8px 22px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
 }
-
-.logo-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: var(--primary);
-  color: var(--surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.logo-text {
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 600;
-  font-size: 17px;
-  color: var(--text);
-}
+.logo-full-img { height: 34px; width: auto; display: block; }
+.logo-mark-img { width: 32px; height: 32px; display: block; }
 
 .sidebar-nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.nav-label { white-space: nowrap; }
 
 .nav-item {
   display: flex;

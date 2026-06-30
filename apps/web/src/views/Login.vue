@@ -2,10 +2,10 @@
   <div class="login-page">
     <div class="login-card">
       <div class="login-logo">
-        <div class="logo-icon">C</div>
+        <img :src="logoMark" class="logo-mark" alt="Cuentitas" />
         <span class="logo-name">Cuentitas</span>
       </div>
-      <p class="login-sub">Finanzas de la familia</p>
+      <p class="login-sub">Tus finanzas, en familia.</p>
 
       <form @submit.prevent="onSubmit" class="login-form">
         <div class="field">
@@ -35,6 +35,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import logoMark from '@/assets/logo-mark.png';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -82,6 +83,12 @@ async function onSubmit() {
   align-items: center;
   gap: 10px;
   margin-bottom: 6px;
+}
+
+.logo-mark {
+  width: 42px;
+  height: 42px;
+  display: block;
 }
 
 .logo-icon {
