@@ -26,6 +26,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-cuentitas}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-cuentitas}
       JWT_SECRET: ${JWT_SECRET}
+      BOT_API_KEY: ${BOT_API_KEY:-}
       ADMIN_USER: ${ADMIN_USER:-Augusto}
       ADMIN_PASS: ${ADMIN_PASS}
       TZ: America/Argentina/Buenos_Aires

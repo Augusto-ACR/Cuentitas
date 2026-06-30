@@ -70,6 +70,35 @@
       </div>
     </div>
 
+    <!-- WhatsApp (bot) -->
+    <div class="section-title" style="margin-top:24px">WhatsApp</div>
+    <div class="card">
+      <div class="pref-desc">Cargá gastos e ingresos por chat. Vinculá tu número una sola vez.</div>
+
+      <!-- Ya vinculado -->
+      <div v-if="wa.vinculado" class="wa-linked">
+        <div>
+          <div class="wa-mini">Número vinculado</div>
+          <div class="wa-tel">{{ wa.telefono }}</div>
+        </div>
+        <button class="btn-del-text" @click="desvincularWa">Desvincular</button>
+      </div>
+
+      <!-- Sin vincular -->
+      <template v-else>
+        <button v-if="!waCodigo" class="btn-pwd" :disabled="waLoading" @click="generarCodigoWa">
+          {{ waLoading ? 'Generando…' : 'Generar código de vinculación' }}
+        </button>
+        <div v-else class="wa-code-box">
+          <div class="wa-code">{{ waCodigo }}</div>
+          <div class="wa-mini">Mandale este código al bot por WhatsApp. Vence en {{ waVigencia }} minutos.</div>
+          <button class="btn-nueva" style="margin-top:4px" @click="generarCodigoWa">Generar otro</button>
+        </div>
+      </template>
+
+      <div v-if="waError" class="form-error" style="margin-top:10px">{{ waError }}</div>
+    </div>
+
     <!-- Cuenta -->
     <div class="section-title" style="margin-top:24px">Cuenta</div>
     <button class="btn-logout" @click="cerrarSesion">Cerrar sesión</button>
@@ -136,6 +165,13 @@ const pwd = ref({ actual: '', nueva: '', repetir: '' });
 const pwdError = ref('');
 const pwdOk = ref(false);
 
+// Vinculación con el bot de WhatsApp
+const wa = ref<{ vinculado: boolean; telefono?: string }>({ vinculado: false });
+const waCodigo = ref('');
+const waVigencia = ref(10);
+const waLoading = ref(false);
+const waError = ref('');
+
 const catsSistema = computed(() => cats.value.filter(c => c.sistema));
 const catsPersonales = computed(() => cats.value.filter(c => !c.sistema));
 
@@ -184,7 +220,38 @@ async function cargarCats() {
   cats.value = await http.get<any[]>('/categorias');
 }
 
-onMounted(() => { dolar.cargar(); cargarCats(); });
+async function cargarWa() {
+  try {
+    wa.value = await http.get<{ vinculado: boolean; telefono?: string }>('/vinculacion-bot');
+  } catch { /* sin vínculo todavía */ }
+}
+
+async function generarCodigoWa() {
+  waError.value = '';
+  waLoading.value = true;
+  try {
+    const r = await http.post<{ codigo: string; vigenciaMin: number }>('/vinculacion-bot/codigo');
+    waCodigo.value = r.codigo;
+    waVigencia.value = r.vigenciaMin;
+  } catch (e: any) {
+    waError.value = e?.message ?? 'No se pudo generar el código';
+  } finally {
+    waLoading.value = false;
+  }
+}
+
+async function desvincularWa() {
+  if (!confirm('¿Desvincular tu WhatsApp del bot?')) return;
+  try {
+    await http.delete('/vinculacion-bot');
+    waCodigo.value = '';
+    await cargarWa();
+  } catch (e: any) {
+    waError.value = e?.message ?? 'No se pudo desvincular';
+  }
+}
+
+onMounted(() => { dolar.cargar(); cargarCats(); cargarWa(); });
 </script>
 
 <style scoped>
@@ -232,4 +299,12 @@ onMounted(() => { dolar.cargar(); cargarCats(); });
 .form-ok { font-size: 12.5px; color: var(--income); background: var(--income-soft); padding: 8px 12px; border-radius: 10px; }
 .btn-pwd { padding: 11px; background: var(--text); color: var(--surface); border: none; border-radius: 12px; font-weight: 600; font-size: 13.5px; cursor: pointer; margin-top: 2px; }
 .btn-logout { width: 100%; padding: 12px; background: var(--expense-soft); color: var(--expense); border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; }
+
+/* WhatsApp / bot */
+.wa-linked { display: flex; align-items: center; justify-content: space-between; }
+.wa-mini { font-size: 12px; color: var(--text-muted); }
+.wa-tel { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--text); font-weight: 600; margin-top: 2px; }
+.btn-del-text { background: none; border: none; color: var(--expense); font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 6px 4px; }
+.wa-code-box { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px 0 2px; }
+.wa-code { font-family: 'JetBrains Mono', monospace; font-size: 34px; font-weight: 700; letter-spacing: 0.22em; color: var(--primary); padding-left: 0.22em; }
 </style>

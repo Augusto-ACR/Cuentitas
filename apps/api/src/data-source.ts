@@ -9,6 +9,7 @@ import { Meta } from './entities/meta.entity';
 import { MetaParticipante } from './entities/meta-participante.entity';
 import { AporteMeta } from './entities/aporte-meta.entity';
 import { CotizacionDolar } from './entities/cotizacion-dolar.entity';
+import { BotVinculacion } from './entities/bot-vinculacion.entity';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -16,7 +17,7 @@ export const AppDataSource = new DataSource({
   entities: [
     Usuario, Categoria, Cuenta, Movimiento,
     Recurrente, Meta, MetaParticipante,
-    AporteMeta, CotizacionDolar,
+    AporteMeta, CotizacionDolar, BotVinculacion,
   ],
   migrations: ['dist/migrations/*.js'],
   synchronize: false,

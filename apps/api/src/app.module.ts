@@ -18,6 +18,7 @@ import { MetasModule } from './modules/metas/metas.module';
 import { DolarModule } from './modules/dolar/dolar.module';
 import { AnalisisModule } from './modules/analisis/analisis.module';
 import { ImportExportModule } from './modules/import-export/import-export.module';
+import { BotModule } from './modules/bot/bot.module';
 import { HealthController } from './modules/health/health.controller';
 
 import { Usuario } from './entities/usuario.entity';
@@ -29,6 +30,7 @@ import { Meta } from './entities/meta.entity';
 import { MetaParticipante } from './entities/meta-participante.entity';
 import { AporteMeta } from './entities/aporte-meta.entity';
 import { CotizacionDolar } from './entities/cotizacion-dolar.entity';
+import { BotVinculacion } from './entities/bot-vinculacion.entity';
 
 @Module({
   imports: [
@@ -39,7 +41,7 @@ import { CotizacionDolar } from './entities/cotizacion-dolar.entity';
       entities: [
         Usuario, Categoria, Cuenta, Movimiento,
         Recurrente, Meta, MetaParticipante,
-        AporteMeta, CotizacionDolar,
+        AporteMeta, CotizacionDolar, BotVinculacion,
       ],
       synchronize: process.env.NODE_ENV !== 'production',
       logging: false,
@@ -59,6 +61,7 @@ import { CotizacionDolar } from './entities/cotizacion-dolar.entity';
     DolarModule,
     AnalisisModule,
     ImportExportModule,
+    BotModule,
   ],
   controllers: [HealthController],
   providers: [
