@@ -4,7 +4,7 @@
     <aside class="sidebar" :class="{ 'sidebar--mini': colapsado }">
       <button class="sidebar-logo" @click="toggleSidebar" :title="colapsado ? 'Expandir menú' : 'Contraer menú'">
         <img v-if="colapsado" :src="logoMark" class="logo-mark-img" alt="Cuentitas" />
-        <img v-else :src="logoFull" class="logo-full-img" alt="Cuentitas" />
+        <img v-else :src="logoExpandido" class="logo-full-img" alt="Cuentitas" />
       </button>
       <nav class="sidebar-nav">
         <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="nav-item" active-class="nav-item--active" :title="item.label">
@@ -44,13 +44,19 @@ import { computed, onMounted, ref } from 'vue';
 import { RouterLink, RouterView, useRouter } from 'vue-router';
 import { useDolarStore } from '@/stores/dolar';
 import { useAuthStore } from '@/stores/auth';
+import { useTemaStore } from '@/stores/tema';
 import { ars } from '@/lib/format';
 import logoFull from '@/assets/logo-full.png';
+import logoFullDark from '@/assets/logo-full-dark.png';
 import logoMark from '@/assets/logo-mark.png';
 
 const dolar = useDolarStore();
 const auth = useAuthStore();
+const tema = useTemaStore();
 const router = useRouter();
+
+// En tema oscuro, el logo+nombre usa la versión con el texto claro.
+const logoExpandido = computed(() => (tema.tema === 'oscuro' ? logoFullDark : logoFull));
 
 // Sidebar colapsable: se togglea tocando el logo y se recuerda en localStorage.
 const colapsado = ref(localStorage.getItem('sidebar_colapsado') === '1');
