@@ -42,18 +42,17 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-    ports:
-      - "8080:80"
+    # Sin `ports:` a propósito. Caddy (/opt/caddy) llega por la red edge;
+    # publicar un puerto dejaría la SPA accesible por IP en HTTP plano.
     networks:
       - default
-      - caddy
+      - edge
 
 volumes:
   pgdata:
 
 networks:
-  # Red existente donde corre Caddy (cookiehaus). Solo nos sumamos a ella;
-  # no se modifica nada de ese proyecto. Permite que Caddy alcance a cuentitas-web-1.
-  caddy:
+  # Red del Caddy compartido del VPS (/opt/caddy): solo proxy + frontends.
+  # Caddy alcanza a este contenedor por su nombre, cuentitas-web-1.
+  edge:
     external: true
-    name: cookiehaus_default
